@@ -1,0 +1,48 @@
+.hue-are-you-container {
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.animated-background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+
+  background: linear-gradient(135deg, #d2d8f1 0%, #ece1f7 100%);
+  animation: hueCycle 10s linear infinite;
+}
+
+@keyframes hueCycle {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+@keyframes colorCycle {
+  0%   { filter: blur(30%) hue-rotate(0deg); }
+  100% { filter: blur(30%) hue-rotate(360deg); }
+}
+
+.hue-are-you-content {
+  position: relative;
+  z-index: 1;
+}
+
+/* パステル背景にグラデーションオーバーレイ */
+.hue-are-you-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    45deg,
+    rgba(255, 182, 193, 0.1) 0%,
+    rgba(173, 216, 230, 0.1) 25%,
+    rgba(221, 160, 221, 0.1) 50%,
+    rgba(152, 251, 152, 0.1) 75%,
+    rgba(255, 218, 185, 0.1) 100%
+  );
+  z-index: 0;
+}
