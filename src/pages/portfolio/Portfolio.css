@@ -1,0 +1,224 @@
+.portfolio {
+  width: 100%;
+  min-height: 100vh;
+  scroll-snap-type: y mandatory;
+  overflow-y: scroll;
+  height: 100vh;
+}
+
+.portfolio section {
+  position: relative;
+  min-height: 100vh;
+  /*height: 100vh;*/
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  padding-top: 80px;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+.section-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.section-content {
+  position: relative;
+  z-index: 1;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 3rem;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
+  width: 100%;
+  backdrop-filter: blur(10px);
+}
+
+.intro-header h2 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.intro-header h3 {
+  color: #34495e;
+  font-size: 1.8rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  font-weight: 300;
+}
+
+.career-section h4 {
+  color: #2c3e50;
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #3498db;
+  padding-bottom: 0.5rem;
+}
+
+.career-list {
+  list-style: none;
+  padding: 0;
+}
+
+.career-item {
+  display: flex;
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: rgba(52, 152, 219, 0.1);
+  border-radius: 8px;
+  transition: transform 0.2s ease;
+}
+
+.career-item:hover {
+  transform: translateX(5px);
+}
+
+.career-year {
+  flex: 0 0 120px;
+  font-weight: bold;
+  color: #3498db;
+  margin-right: 1rem;
+}
+
+.career-description {
+  flex: 1;
+  color: #2c3e50;
+}
+
+.skills-section .section-content h2 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.skills-grid {
+  display: grid;
+  gap: 2rem;
+}
+
+.skill-category {
+  background: rgba(236, 240, 241, 0.8);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+}
+
+.skill-category h3 {
+  color: #2c3e50;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.skill-category ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.skill-category li {
+  color: #34495e;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.skill-category li:before {
+  content: '▸';
+  color: #3498db;
+  position: absolute;
+  left: 0;
+}
+
+.tech-stacks {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.tech-stack {
+  background: rgba(231, 76, 60, 0.1);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border-left: 4px solid #e74c3c;
+}
+
+.tech-stack h3 {
+  color: #c0392b;
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+}
+
+.tech-detail {
+  margin-bottom: 0.8rem;
+  color: #2c3e50;
+  line-height: 1.5;
+}
+
+.tech-detail strong {
+  color: #e74c3c;
+}
+
+.portfolio-section .section-content h2 {
+  color: #2c3e50;
+  font-size: 2.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.portfolio-items {
+  display: grid;
+  gap: 2rem;
+}
+
+.portfolio-item-template {
+  background: rgba(149, 165, 166, 0.2);
+  padding: 3rem;
+  border-radius: 8px;
+  text-align: center;
+  color: #34495e;
+  font-size: 1.2rem;
+  border: 2px dashed #95a5a6;
+}
+
+@media (max-width: 768px) {
+  .portfolio section {
+    padding: 1rem;
+    min-height: auto;
+  }
+  
+  .section-content {
+    padding: 2rem;
+  }
+  
+  .intro-header h2 {
+    font-size: 2rem;
+  }
+  
+  .intro-header h3 {
+    font-size: 1.4rem;
+  }
+  
+  .career-item {
+    flex-direction: column;
+  }
+  
+  .career-year {
+    flex: none;
+    margin-right: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .tech-stacks {
+    grid-template-columns: 1fr;
+  }
+}

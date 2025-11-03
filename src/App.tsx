@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import HueAreYouApp from './pages/hue-are-you/HueAreYouApp'
+import Portfolio from './pages/portfolio/Portfolio'
 import LoginModal, { LoginModalState } from './components/LoginModal'
 import './App.css'
 
-type CurrentPage = 'home' | 'hue-are-you' | 'toy-space' | 'contact'
+type CurrentPage = 'home' | 'hue-are-you' | 'toy-space' | 'contact' | 'portfolio'
 
 function App() {
   const [currentPage, setCurrentPage] = useState<CurrentPage>('home')
@@ -16,6 +17,8 @@ function App() {
     switch (currentPage) {
       case 'hue-are-you':
         return <HueAreYouApp />
+      case 'portfolio':
+        return <Portfolio />
       case 'home':
       default:
         return (
@@ -32,11 +35,26 @@ function App() {
                     border: 'none',
                     borderRadius: '8px',
                     color: 'white',
-                    cursor: 'pointer'
+                    cursor: 'pointer',
+                    marginRight: '1rem'
                   }}
                   onClick={() => setCurrentPage('hue-are-you')}
                 >
                   Hue Are You? を試す
+                </button>
+                <button
+                  style={{
+                    padding: '1rem 2rem',
+                    fontSize: '1.2rem',
+                    background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
+                    border: 'none',
+                    borderRadius: '8px',
+                    color: 'white',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setCurrentPage('portfolio')}
+                >
+                  ポートフォリオを見る
                 </button>
               </div>
             </section>
@@ -85,6 +103,15 @@ function App() {
                     className={currentPage === 'hue-are-you' ? 'active' : ''}
                   >
                     Hue Are You?
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#portfolio"
+                    onClick={(e) => { e.preventDefault(); setCurrentPage('portfolio'); setIsMobileMenuOpen(false) }}
+                    className={currentPage === 'portfolio' ? 'active' : ''}
+                  >
+                    ポートフォリオ
                   </a>
                 </li>
                 <li>
