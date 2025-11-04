@@ -11,19 +11,18 @@ interface SkillCategory {
   items: string[]
 }
 
+interface TechIcon {
+  type: 'devicon' | 'simple'
+  className?: string
+  name?: string
+}
+
 interface TechStack {
   name: string
   tools?: string[]
   libraries?: string[]
   usage: string
-}
-
-interface PortfolioItem {
-  name: string
-  url: string
-  technologies: string[]
-  description: string
-  image?: string
+  icons?: TechIcon[]
 }
 
 const Portfolio: React.FC = () => {
@@ -69,34 +68,52 @@ const Portfolio: React.FC = () => {
       name: 'C/C++',
       tools: ['CMake', 'gdb/lldb', 'Valgrind', 'QEMU'],
       libraries: ['Vulkan', 'OpenGL', 'OpenCV', 'SDL3', 'UnrealEngine', 'Qt'],
-      usage: 'ゲーム, CUIアプリ, 実験的なプログラム, 大規模プロジェクト'
+      usage: 'ゲーム, CUIアプリ, 実験的なプログラム, 大規模プロジェクト',
+      icons: [
+        { type: 'simple', name: 'cplusplus' }
+      ]
     },
     {
       name: 'Java',
       tools: ['Gradle/Maven', 'JNI'],
       libraries: ['SpringBoot', 'Java EE', 'JUnit', 'Mockito', 'Log4j'],
-      usage: '案件開発での主力, MinecaftのPlugin/Mod開発'
+      usage: '案件開発での主力, MinecaftのPlugin/Mod開発',
+      icons: [
+        { type: 'devicon', className: 'devicon-java-plain' }
+      ]
     },
     {
       name: 'Go',
-      usage: '個人開発でのバックエンドサーバ(特にREST API), 小規模プロジェクト'
+      usage: '個人開発でのバックエンドサーバ(特にREST API), 小規模プロジェクト',
+      icons: [
+        { type: 'simple', name: 'go' }
+      ]
     },
     {
       name: 'Python',
       tools: ['Conda', 'Rye', 'Poetry', 'JupyterNotebook'],
       libraries: ['TensorFlow', 'PyTorch', 'OpenCV2', 'SymPy', 'Selenium', 'PyGame'],
-      usage: '数値実験, 統計処理, AI研究, スクレイピング'
+      usage: '数値実験, 統計処理, AI研究, スクレイピング',
+      icons: [
+        { type: 'devicon', className: 'devicon-python-plain' }
+      ]
     },
     {
       name: 'JS/TS',
       tools: ['Vite'],
       libraries: ['React', 'Next.js', 'Excalibur.js'],
-      usage: 'Webフロントエンド, ブラウザゲーム'
+      usage: 'Webフロントエンド, ブラウザゲーム',
+      icons: [
+        { type: 'simple', name: 'javascript' }
+      ]
     },
     {
       name: 'C#',
       libraries: ['Unity', 'WPF', 'UWP', 'Xamarin'],
-      usage: 'GUIアプリ'
+      usage: 'GUIアプリ',
+      icons: [
+        { type: 'devicon', className: 'devicon-csharp-plain' }
+      ]
     }
   ]
 
@@ -161,7 +178,26 @@ const Portfolio: React.FC = () => {
             <div className="tech-stacks">
               {techStacks.map((tech, index) => (
                 <div key={index} className="tech-stack">
-                  <h3>{tech.name}</h3>
+                  <div className="tech-stack-header">
+                    {tech.icons && (
+                      <div className="tech-icons" aria-hidden="true">
+                        {tech.icons.map((icon, iconIndex) =>
+                          icon.type === 'devicon' && icon.className ? (
+                            <i key={iconIndex} className={`tech-icon ${icon.className}`} />
+                          ) : icon.type === 'simple' && icon.name ? (
+                            <img
+                              key={iconIndex}
+                              src={`https://cdn.jsdelivr.net/npm/simple-icons@v11/icons/${icon.name}.svg`}
+                              alt=""
+                              className="tech-icon"
+                              loading="lazy"
+                            />
+                          ) : null
+                        )}
+                      </div>
+                    )}
+                    <h3>{tech.name}</h3>
+                  </div>
                   {tech.tools && (
                     <div className="tech-detail">
                       <strong>ツール:</strong> {tech.tools.join(', ')}

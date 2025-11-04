@@ -152,10 +152,44 @@
   border-left: 4px solid #e74c3c;
 }
 
+.tech-stack-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
 .tech-stack h3 {
   color: #c0392b;
   font-size: 1.3rem;
-  margin-bottom: 1rem;
+  margin: 0;
+}
+
+.tech-icons {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+
+.tech-icon {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #c0392b;
+  fill: #c0392b;
+}
+
+.tech-icons img.tech-icon,
+.tech-icons svg.tech-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.tech-icons .tech-icon[class*='devicon-'] {
+  font-size: 28px;
 }
 
 .tech-detail {
