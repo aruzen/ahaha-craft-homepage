@@ -1,5 +1,8 @@
 import React, { useRef, useEffect } from 'react'
 import './Portfolio.css'
+import { drawIntroCanvasBackground } from './background/introCanvas'
+import { drawSkillsCanvasBackground } from './background/skillsCanvas'
+import { drawProjectsCanvasBackground } from './background/projectsCanvas'
 
 declare global {
   interface Window {
@@ -129,26 +132,10 @@ const Portfolio: React.FC = () => {
   ]
 
   useEffect(() => {
-    const canvases = [
-      { ref: introCanvasRef, color: '#2c3e50' },
-      { ref: skillsCanvasRef, color: '#4f9582ff' },
-      { ref: portfolioCanvasRef, color: '#3498db' }
-    ]
-
-    const initCanvas = (canvas: HTMLCanvasElement | null, color: string) => {
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-
-      canvas.width = window.innerWidth
-      canvas.height = window.innerHeight
-
-      ctx.fillStyle = color
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-    }
-
     const drawAll = () => {
-      canvases.forEach(({ ref, color }) => initCanvas(ref.current, color))
+      drawIntroCanvasBackground(introCanvasRef.current)
+      drawSkillsCanvasBackground(skillsCanvasRef.current)
+      drawProjectsCanvasBackground(portfolioCanvasRef.current)
     }
 
     drawAll()
