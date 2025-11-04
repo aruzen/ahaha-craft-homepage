@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
 import './LoginModal.css'
 
 export type LoginModalState = 'login' | 'signup' | null
@@ -9,7 +9,7 @@ interface LoginModalProps {
   onLogin: (username: string) => void
 }
 
-const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin }) => {
+const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
   const [state, setState] = useState<LoginModalState>(modalState)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -18,16 +18,16 @@ const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin })
 
   useEffect(() => {
     setState(modalState)
-  }, [,modalState])
+  }, [modalState])
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!username.trim() || !password.trim()) {
       alert('ユーザー名とパスワードを入力してください')
       return
     }
 
-    if (state == 'login' && password !== confirmPassword) {
+    if (state === 'signup' && password !== confirmPassword) {
       alert('パスワードが一致しません')
       return
     }
@@ -45,14 +45,13 @@ const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin })
     }, 1000)
   }
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
+  const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget) {
       onClose()
     }
   }
 
   if (state === null) return null
-  console.log("aaa")
 
   return (
     <div className="login-modal-backdrop" onClick={handleBackdropClick}>
@@ -62,8 +61,8 @@ const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin })
         </button>
         
         <div className="login-header">
-          <h2>{state == 'login' ? 'Login' : 'Sign Up'}</h2>
-          <p>{state == 'login' ? 'AhahaCraftにログイン' : 'AhahaCraftに新規登録'}</p>
+          <h2>{state === 'login' ? 'Login' : 'Sign Up'}</h2>
+          <p>{state === 'login' ? 'AhahaCraftにログイン' : 'AhahaCraftに新規登録'}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -91,7 +90,7 @@ const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin })
             />
           </div>
 
-          {state == 'signup' && (
+          {state === 'signup' && (
             <div className="form-group">
               <label htmlFor="confirmPassword">パスワード確認</label>
               <input
@@ -110,20 +109,26 @@ const LoginModal: React.FC<LoginModalProps> = ({ modalState, onClose, onLogin })
             className="submit-btn"
             disabled={isLoading}
           >
-            {isLoading ? '処理中...' : (state == 'login' ? 'ログイン' : 'サインアップ')}
+            {isLoading
+              ? '処理中...'
+              : state === 'login'
+                ? 'ログイン'
+                : 'サインアップ'}
           </button>
         </form>
 
         <div className="switch-mode">
           <p>
-            {state == 'login' ? 'アカウントをお持ちでない方は' : 'すでにアカウントをお持ちの方は'}
-            <button 
+            {state === 'login'
+              ? 'アカウントをお持ちでない方は'
+              : 'すでにアカウントをお持ちの方は'}
+            <button
               type="button"
               className="switch-btn"
-              onClick={() => state == 'login' ? setState('signup') : setState('login')}
+              onClick={() => (state === 'login' ? setState('signup') : setState('login'))}
               disabled={isLoading}
             >
-              {state == 'login' ? 'サインアップ' : 'ログイン'}
+              {state === 'login' ? 'サインアップ' : 'ログイン'}
             </button>
           </p>
         </div>
