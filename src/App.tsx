@@ -55,14 +55,6 @@ function App() {
                 </li>
                 <li>
                   <NavLink
-                    to="/portfolio"
-                    className={({ isActive }) => (isActive ? 'active' : undefined)}
-                  >
-                    ポートフォリオ
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink
                     to="/toy-space"
                     className={({ isActive }) => (isActive ? 'active' : undefined)}
                   >
