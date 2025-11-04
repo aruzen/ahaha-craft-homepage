@@ -1,78 +1,31 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import LoginModal, { LoginModalState } from './components/LoginModal'
 import HueAreYouApp from './pages/hue-are-you/HueAreYouApp'
 import Portfolio from './pages/portfolio/Portfolio'
-import LoginModal, { LoginModalState } from './components/LoginModal'
+import Home from './pages/home/Home'
+import ToySpace from './pages/toy-space/ToySpace'
+import Contact from './pages/contact/Contact'
+import NotFound from './pages/not-found/NotFound'
 import './App.css'
 
-type CurrentPage = 'home' | 'hue-are-you' | 'toy-space' | 'contact' | 'portfolio'
-
 function App() {
-  const [currentPage, setCurrentPage] = useState<CurrentPage>('home')
+  const location = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<string | null>(null)
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'hue-are-you':
-        return <HueAreYouApp />
-      case 'portfolio':
-        return <Portfolio />
-      case 'home':
-      default:
-        return (
-          <main>
-            <section id="home">
-              <h2>Welcome</h2>
-              <p>このサイトは現在開発中です。</p>
-              <div style={{ marginTop: '2rem' }}>
-                <button
-                  style={{
-                    padding: '1rem 2rem',
-                    fontSize: '1.2rem',
-                    background: 'linear-gradient(45deg, #4ecdc4, #45b7d1)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    cursor: 'pointer',
-                    marginRight: '1rem'
-                  }}
-                  onClick={() => setCurrentPage('hue-are-you')}
-                >
-                  Hue Are You? を試す
-                </button>
-                <button
-                  style={{
-                    padding: '1rem 2rem',
-                    fontSize: '1.2rem',
-                    background: 'linear-gradient(45deg, #e74c3c, #c0392b)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    color: 'white',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setCurrentPage('portfolio')}
-                >
-                  ポートフォリオを見る
-                </button>
-              </div>
-            </section>
-          </main>
-        )
-    }
-  }
+  useEffect(() => {
+    setIsMobileMenuOpen(false)
+  }, [location.pathname])
 
   return (
     <div className="App">
       <header className="App-header">
         <div className="header-content">
           <div className="header-left">
-            <img
-              src="/resource/ahahacraft.png"
-              alt="AhahaCraft Logo"
-              className="logo"
-            />
+            <img src="/resource/ahahacraft.png" alt="AhahaCraft Logo" className="logo" />
             <h1>AhahaCraft</h1>
           </div>
           <div className="nav-container">
@@ -88,59 +41,58 @@ function App() {
             <nav className={`nav ${isMobileMenuOpen ? 'nav-open' : ''}`}>
               <ul>
                 <li>
-                  <a
-                    href="#home"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage('home'); setIsMobileMenuOpen(false) }}
-                    className={currentPage === 'home' ? 'active' : ''}
-                  >
+                  <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : undefined)}>
                     ホーム
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a
-                    href="#hue-are-you"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage('hue-are-you'); setIsMobileMenuOpen(false) }}
-                    className={currentPage === 'hue-are-you' ? 'active' : ''}
+                  <NavLink
+                    to="/hue-are-you"
+                    className={({ isActive }) => (isActive ? 'active' : undefined)}
                   >
                     Hue Are You?
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a
-                    href="#portfolio"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage('portfolio'); setIsMobileMenuOpen(false) }}
-                    className={currentPage === 'portfolio' ? 'active' : ''}
+                  <NavLink
+                    to="/portfolio"
+                    className={({ isActive }) => (isActive ? 'active' : undefined)}
                   >
                     ポートフォリオ
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a
-                    href="#toy-space"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage('toy-space'); setIsMobileMenuOpen(false) }}
-                    className={currentPage === 'toy-space' ? 'active' : ''}
+                  <NavLink
+                    to="/toy-space"
+                    className={({ isActive }) => (isActive ? 'active' : undefined)}
                   >
                     Toy Space
-                  </a>
+                  </NavLink>
                 </li>
                 <li>
-                  <a
-                    href="#contact"
-                    onClick={(e) => { e.preventDefault(); setCurrentPage('contact'); setIsMobileMenuOpen(false) }}
-                    className={currentPage === 'contact' ? 'active' : ''}
+                  <NavLink
+                    to="/contact"
+                    className={({ isActive }) => (isActive ? 'active' : undefined)}
                   >
                     コンタクト
+                  </NavLink>
+                </li>
+                <li>
+                  <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+                    GitHub
                   </a>
                 </li>
-                <li><a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a></li>
                 <li>
                   <div className="auth-buttons">
                     {isAuthenticated ? (
-                      <div className="user-info">´
+                      <div className="user-info">
                         <span className="user-name">Welcome, {user}</span>
                         <button
                           className="logout-btn"
-                          onClick={() => { setIsAuthenticated(false); setUser(null) }}
+                          onClick={() => {
+                            setIsAuthenticated(false)
+                            setUser(null)
+                          }}
                         >
                           Logout
                         </button>
@@ -168,7 +120,16 @@ function App() {
           </div>
         </div>
       </header>
-      {renderPage()}
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/hue-are-you" element={<HueAreYouApp />} />
+        <Route path="/portfolio" element={<Portfolio />} />
+        <Route path="/toy-space" element={<ToySpace />} />
+        <Route path="/contact" element={<Contact />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+
       <LoginModal
         modalState={modalState}
         onClose={() => setLoginModalState(null)}
