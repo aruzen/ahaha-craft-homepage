@@ -14,9 +14,11 @@ const navClassName = ({ isActive }: { isActive: boolean }) =>
 function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authToken, setAuthToken] = useState<string | null>(null)
   const [user, setUser] = useState<string | null>(null)
+  const [isAdmin, setIsAdmin] = useState(false)
   const location = useLocation()
+  const isAuthenticated = authToken !== null
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -79,12 +81,16 @@ function App() {
                   <div className="auth-buttons">
                     {isAuthenticated ? (
                       <div className="user-info">
-                        <span className="user-name">Welcome, {user}</span>
+                        <span className="user-name">
+                          Welcome, {user}
+                          {isAdmin ? ' (Admin)' : ''}
+                        </span>
                         <button
                           className="logout-btn"
                           onClick={() => {
-                            setIsAuthenticated(false)
+                            setAuthToken(null)
                             setUser(null)
+                            setIsAdmin(false)
                           }}
                         >
                           Logout
@@ -124,9 +130,10 @@ function App() {
       <LoginModal
         modalState={modalState}
         onClose={() => setLoginModalState(null)}
-        onLogin={(username) => {
-          setIsAuthenticated(true)
+        onLogin={({ username, token, isAdmin }) => {
+          setAuthToken(token)
           setUser(username)
+          setIsAdmin(isAdmin)
         }}
       />
     </div>

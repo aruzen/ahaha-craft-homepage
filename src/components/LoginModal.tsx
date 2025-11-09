@@ -6,7 +6,7 @@ export type LoginModalState = 'login' | 'signup' | null
 interface LoginModalProps {
   modalState: LoginModalState
   onClose: () => void
-  onLogin: (username: string) => void
+  onLogin: (payload: { username: string; token: string; isAdmin: boolean }) => void
 }
 
 const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
@@ -33,16 +33,44 @@ const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
     }
 
     setIsLoading(true)
-    
-    // 模擬ログイン処理
-    setTimeout(() => {
-      onLogin(username)
-      setIsLoading(false)
+
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          username,
+          password,
+          mode: state,
+        }),
+      })
+
+      if (!response.ok) {
+        const errorBody = await response.json().catch(() => null)
+        const message =
+          (errorBody && (errorBody.message ?? errorBody.error)) ||
+          'ログインに失敗しました。時間をおいて再度お試しください。'
+        throw new Error(message)
+      }
+
+      const data: { token?: string; isAdmin?: boolean } = await response.json()
+      if (!data.token || typeof data.isAdmin !== 'boolean') {
+        throw new Error('サーバーから不正なレスポンスを受信しました。')
+      }
+
+      onLogin({ username, token: data.token, isAdmin: data.isAdmin })
       onClose()
       setUsername('')
       setPassword('')
       setConfirmPassword('')
-    }, 1000)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '予期せぬエラーが発生しました'
+      alert(message)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const handleBackdropClick = (e: MouseEvent<HTMLDivElement>) => {
