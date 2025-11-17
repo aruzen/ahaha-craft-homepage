@@ -20,8 +20,8 @@ func NewHueRecordPayload(record domain.HueRecord) HueRecordPayload {
 }
 
 type SaveResultRequest struct {
-	UserData map[string]interface{} `json:"user_data"`
-	Record   HueRecordPayload       `json:"record"`
+	UserName string           `json:"user_name"`
+	Record   HueRecordPayload `json:"record"`
 }
 
 func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
@@ -30,7 +30,7 @@ func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
 		return domain.HueResultSubmission{}, err
 	}
 
-	userData, err := domain.NewUserData(r.UserData)
+	userData, err := domain.NewName(r.UserName)
 	if err != nil {
 		return domain.HueResultSubmission{}, err
 	}

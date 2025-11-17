@@ -5,7 +5,6 @@ import "errors"
 var (
 	ErrEmptyName           = errors.New("domain: empty name")
 	ErrInvalidChoice       = errors.New("domain: invalid choice")
-	ErrInvalidUserDataKey  = errors.New("domain: invalid user data key")
 	ErrInvalidRange        = errors.New("domain: invalid record range")
 	ErrInvalidToken        = errors.New("domain: invalid token")
 	ErrInvalidCredential   = errors.New("domain: invalid credential")
