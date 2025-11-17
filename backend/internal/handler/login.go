@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/google/uuid"
 	"net/http"
 
 	"backend/internal/domain"
@@ -12,7 +13,7 @@ import (
 
 // LoginService は認証処理を司るユースケース層の抽象インターフェース。
 type LoginService interface {
-	Login(ctx context.Context, credential domain.AdminCredential) (domain.Token, error)
+	Login(ctx context.Context, credential domain.AdminCredential) (uuid.UUID, domain.LoginSessionToken, error)
 }
 
 // LoginHandler は /api/login の HTTP リクエストを処理する。
@@ -47,7 +48,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token, err := h.service.Login(r.Context(), credential)
+	id, token, err := h.service.Login(r.Context(), credential)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredential) {
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -59,5 +60,5 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(token))
+	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(id, token))
 }

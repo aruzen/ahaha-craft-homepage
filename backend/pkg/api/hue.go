@@ -46,19 +46,19 @@ type GetDataRequest struct {
 	DataRange []int  `json:"data-range"`
 }
 
-func (r GetDataRequest) ToDomain() (domain.Token, domain.RecordRange, error) {
-	token, err := domain.NewToken(r.Token)
+func (r GetDataRequest) ToDomain() (domain.LoginSessionToken, domain.RecordRange, error) {
+	token, err := domain.NewLoginSessionTokenFromPersistence(r.Token)
 	if err != nil {
-		return domain.Token{}, domain.RecordRange{}, err
+		return domain.LoginSessionToken{}, domain.RecordRange{}, err
 	}
 
 	if len(r.DataRange) != 2 {
-		return domain.Token{}, domain.RecordRange{}, domain.ErrInvalidRange
+		return domain.LoginSessionToken{}, domain.RecordRange{}, domain.ErrInvalidRange
 	}
 
 	recordRange, err := domain.NewRecordRange(r.DataRange[0], r.DataRange[1])
 	if err != nil {
-		return domain.Token{}, domain.RecordRange{}, err
+		return domain.LoginSessionToken{}, domain.RecordRange{}, err
 	}
 
 	return token, recordRange, nil

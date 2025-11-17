@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"net/http/httptest"
@@ -13,12 +14,10 @@ import (
 
 	"backend/internal/domain"
 	"backend/pkg/api"
-
-	"github.com/google/uuid"
 )
 
 func TestLoginHandler_ServeHTTP_Success(t *testing.T) {
-	token, err := domain.NewToken(uuid.NewString())
+	token, err := domain.NewLoginSessionToken()
 	if err != nil {
 		t.Fatalf("failed to create token: %v", err)
 	}
@@ -149,16 +148,17 @@ func TestLoginHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 
 type fakeLoginService struct {
 	credential domain.AdminCredential
-	token      domain.Token
+	userID     uuid.UUID
+	token      domain.LoginSessionToken
 	err        error
 	called     bool
 }
 
-func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (domain.Token, error) {
+func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (uuid.UUID, domain.LoginSessionToken, error) {
 	f.called = true
 	f.credential = credential
 	if f.err != nil {
-		return domain.Token{}, f.err
+		return uuid.Nil, domain.LoginSessionToken{}, f.err
 	}
-	return f.token, nil
+	return f.userID, f.token, nil
 }

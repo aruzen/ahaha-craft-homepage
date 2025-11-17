@@ -8,32 +8,19 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestNewLoginSessionToken(t *testing.T) {
-	token, err := NewLoginSessionToken("  hashed-secret  ")
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if token.String() != "hashed-secret" {
-		t.Fatalf("expected trimmed token, got %q", token.String())
-	}
-}
-
-func TestNewLoginSessionToken_Blank(t *testing.T) {
-	if _, err := NewLoginSessionToken(" \t\n"); !errors.Is(err, ErrInvalidSessionToken) {
-		t.Fatalf("expected ErrInvalidSessionToken, got %v", err)
-	}
-}
-
 func TestNewLoginSession(t *testing.T) {
 	userID := uuid.New()
-	token, err := NewLoginSessionToken("hashed")
+	token, err := NewLoginSessionToken()
 	if err != nil {
 		t.Fatalf("token error: %v", err)
 	}
+	hashed, err := token.Hash()
+	if err != nil {
+		t.Fatalf("hash error: %v", err)
+	}
 
 	issuedAt := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
-	session, err := NewLoginSession(userID, token, issuedAt)
+	session, err := NewLoginSession(userID, hashed, issuedAt)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -46,8 +33,8 @@ func TestNewLoginSession(t *testing.T) {
 		t.Fatalf("unexpected user id: %v", session.UserID())
 	}
 
-	if session.HashedToken() != token.String() {
-		t.Fatalf("unexpected hashed token: %s", session.HashedToken())
+	if err := session.Verify(token); err != nil {
+		t.Fatalf("unexpected hashed token: %s", err)
 	}
 
 	if !session.CreatedAt().Equal(issuedAt) {
@@ -61,7 +48,7 @@ func TestNewLoginSession(t *testing.T) {
 }
 
 func TestNewLoginSession_InvalidInput(t *testing.T) {
-	token, err := NewLoginSessionToken("hashed")
+	token, err := NewLoginSessionToken()
 	if err != nil {
 		t.Fatalf("token error: %v", err)
 	}
@@ -73,42 +60,53 @@ func TestNewLoginSession_InvalidInput(t *testing.T) {
 		issued time.Time
 	}{
 		{"zero user", uuid.Nil, token, time.Now()},
-		{"zero token", uuid.New(), LoginSessionToken{}, time.Now()},
 		{"zero issued", uuid.New(), token, time.Time{}},
 	}
 
 	for _, tc := range cases {
-		if _, err := NewLoginSession(tc.userID, tc.token, tc.issued); !errors.Is(err, ErrInvalidLoginSession) {
+		hashed, err := tc.token.Hash()
+		if err != nil {
+			t.Fatalf("hash error: %v", err)
+		}
+		if _, err := NewLoginSession(tc.userID, hashed, tc.issued); !errors.Is(err, ErrInvalidLoginSession) {
 			t.Fatalf("%s: expected ErrInvalidLoginSession, got %v", tc.name, err)
 		}
 	}
 }
 
 func TestNewLoginSessionFromPersistence_InvalidTimes(t *testing.T) {
-	token, err := NewLoginSessionToken("hashed")
+	token, err := NewLoginSessionToken()
 	if err != nil {
 		t.Fatalf("token error: %v", err)
 	}
+	hashed, err := token.Hash()
+	if err != nil {
+		t.Fatalf("hash error: %v", err)
+	}
 
 	created := time.Now().UTC()
-	if _, err := NewLoginSessionFromPersistence(uuid.New(), uuid.New(), token, created, created); !errors.Is(err, ErrInvalidLoginSession) {
+	if _, err := NewLoginSessionFromPersistence(uuid.New(), uuid.New(), hashed, created, created); !errors.Is(err, ErrInvalidLoginSession) {
 		t.Fatalf("expected ErrInvalidLoginSession when expiry <= created_at, got %v", err)
 	}
 
-	if _, err := NewLoginSessionFromPersistence(uuid.Nil, uuid.New(), token, created.Add(time.Minute), created); !errors.Is(err, ErrInvalidLoginSession) {
+	if _, err := NewLoginSessionFromPersistence(uuid.Nil, uuid.New(), hashed, created.Add(time.Minute), created); !errors.Is(err, ErrInvalidLoginSession) {
 		t.Fatalf("expected ErrInvalidLoginSession for zero id, got %v", err)
 	}
 }
 
 func TestLoginSession_IsExpired(t *testing.T) {
-	token, err := NewLoginSessionToken("hashed")
+	token, err := NewLoginSessionToken()
 	if err != nil {
 		t.Fatalf("token error: %v", err)
+	}
+	hashed, err := token.Hash()
+	if err != nil {
+		t.Fatalf("hash error: %v", err)
 	}
 
 	created := time.Date(2025, 2, 3, 4, 5, 6, 0, time.UTC)
 	expires := created.Add(time.Minute)
-	session, err := NewLoginSessionFromPersistence(uuid.New(), uuid.New(), token, expires, created)
+	session, err := NewLoginSessionFromPersistence(uuid.New(), uuid.New(), hashed, expires, created)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

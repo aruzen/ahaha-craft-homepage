@@ -1,6 +1,9 @@
 package api
 
-import "backend/internal/domain"
+import (
+	"backend/internal/domain"
+	"github.com/google/uuid"
+)
 
 type LoginRequest struct {
 	Name     string `json:"name"`
@@ -17,9 +20,10 @@ func (r LoginRequest) ToDomain() (domain.AdminCredential, error) {
 }
 
 type LoginResponse struct {
-	Token string `json:"token"`
+	UserID string `json:"user_id"`
+	Token  string `json:"token"`
 }
 
-func NewLoginResponse(token domain.Token) LoginResponse {
-	return LoginResponse{Token: token.String()}
+func NewLoginResponse(userID uuid.UUID, token domain.LoginSessionToken) LoginResponse {
+	return LoginResponse{UserID: userID.String(), Token: token.String()}
 }

@@ -31,6 +31,13 @@ func NewLoginSessionToken() (LoginSessionToken, error) {
 	return LoginSessionToken{value: token}, nil
 }
 
+func NewLoginSessionTokenFromPersistence(value string) (LoginSessionToken, error) {
+	if value == "" {
+		return LoginSessionToken{}, ErrInvalidSessionToken
+	}
+	return LoginSessionToken{value: value}, nil
+}
+
 func (t LoginSessionToken) String() string {
 	return t.value
 }
@@ -48,6 +55,13 @@ func (t LoginSessionToken) Hash() (HashedLoginSessionToken, error) {
 	}
 	result.value = string(hashed)
 	return result, nil
+}
+
+func NewHashedLoginSessionTokenFromPersistence(value string) (HashedLoginSessionToken, error) {
+	if value == "" {
+		return HashedLoginSessionToken{}, ErrInvalidSessionToken
+	}
+	return HashedLoginSessionToken{value: value}, nil
 }
 
 func (h HashedLoginSessionToken) String() string {
@@ -92,6 +106,10 @@ func (s LoginSession) Token() HashedLoginSessionToken {
 
 func (s LoginSession) HashedToken() string {
 	return s.token.String()
+}
+
+func (s LoginSession) Verify(token LoginSessionToken) error {
+	return bcrypt.CompareHashAndPassword([]byte(s.token.value), []byte(token.value))
 }
 
 func (s LoginSession) CreatedAt() time.Time {
