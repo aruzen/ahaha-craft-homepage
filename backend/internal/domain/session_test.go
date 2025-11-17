@@ -8,6 +8,41 @@ import (
 	"github.com/google/uuid"
 )
 
+func TestParseLoginSessionToken(t *testing.T) {
+	generated, err := NewLoginSessionToken()
+	if err != nil {
+		t.Fatalf("failed to generate token: %v", err)
+	}
+
+	parsed, err := ParseLoginSessionToken(generated.String())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if parsed.String() != generated.String() {
+		t.Fatalf("expected %s got %s", generated.String(), parsed.String())
+	}
+
+	if _, err := ParseLoginSessionToken("invalid-base64"); !errors.Is(err, ErrInvalidSessionToken) {
+		t.Fatalf("expected ErrInvalidSessionToken, got %v", err)
+	}
+}
+
+func TestParseHashedLoginSessionToken(t *testing.T) {
+	if _, err := ParseHashedLoginSessionToken("  "); !errors.Is(err, ErrInvalidSessionToken) {
+		t.Fatalf("expected ErrInvalidSessionToken, got %v", err)
+	}
+
+	hashed, err := ParseHashedLoginSessionToken("  hashed-value  ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if hashed.String() != "hashed-value" {
+		t.Fatalf("expected trimmed hash, got %s", hashed.String())
+	}
+}
+
 func TestNewLoginSession(t *testing.T) {
 	userID := uuid.New()
 	token, err := NewLoginSessionToken()
@@ -117,5 +152,34 @@ func TestLoginSession_IsExpired(t *testing.T) {
 
 	if !session.IsExpired(expires.Add(time.Nanosecond)) {
 		t.Fatalf("session should be expired")
+	}
+}
+
+func TestNewSessionData(t *testing.T) {
+	userID := uuid.New()
+	token, err := NewLoginSessionToken()
+	if err != nil {
+		t.Fatalf("token error: %v", err)
+	}
+
+	data, err := NewSessionData(userID, token)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if data.UserID() != userID {
+		t.Fatalf("unexpected user id")
+	}
+
+	if data.Token().String() != token.String() {
+		t.Fatalf("unexpected token")
+	}
+
+	if _, err := NewSessionData(uuid.Nil, token); !errors.Is(err, ErrInvalidSessionData) {
+		t.Fatalf("expected ErrInvalidSessionData, got %v", err)
+	}
+
+	if _, err := NewSessionData(userID, LoginSessionToken{}); !errors.Is(err, ErrInvalidSessionData) {
+		t.Fatalf("expected ErrInvalidSessionData, got %v", err)
 	}
 }

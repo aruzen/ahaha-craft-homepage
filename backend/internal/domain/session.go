@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"golang.org/x/crypto/bcrypt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -11,6 +12,8 @@ import (
 
 // DefaultLoginSessionTTL は login_sessions.expires_at のデフォルト(30分)に合わせる。
 const DefaultLoginSessionTTL = 30 * time.Minute
+
+const loginSessionTokenByteLength = 32
 
 type LoginSessionToken struct {
 	value string
@@ -21,7 +24,7 @@ type HashedLoginSessionToken struct {
 }
 
 func NewLoginSessionToken() (LoginSessionToken, error) {
-	tokenBytes := make([]byte, 32)
+	tokenBytes := make([]byte, loginSessionTokenByteLength)
 	_, err := rand.Read(tokenBytes)
 	if err != nil {
 		return LoginSessionToken{}, err
@@ -31,11 +34,18 @@ func NewLoginSessionToken() (LoginSessionToken, error) {
 	return LoginSessionToken{value: token}, nil
 }
 
-func NewLoginSessionTokenFromPersistence(value string) (LoginSessionToken, error) {
-	if value == "" {
+func ParseLoginSessionToken(value string) (LoginSessionToken, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return LoginSessionToken{}, ErrInvalidSessionToken
 	}
-	return LoginSessionToken{value: value}, nil
+
+	decoded, err := base64.RawURLEncoding.DecodeString(trimmed)
+	if err != nil || len(decoded) != loginSessionTokenByteLength {
+		return LoginSessionToken{}, ErrInvalidSessionToken
+	}
+
+	return LoginSessionToken{value: trimmed}, nil
 }
 
 func (t LoginSessionToken) String() string {
@@ -57,11 +67,12 @@ func (t LoginSessionToken) Hash() (HashedLoginSessionToken, error) {
 	return result, nil
 }
 
-func NewHashedLoginSessionTokenFromPersistence(value string) (HashedLoginSessionToken, error) {
-	if value == "" {
+func ParseHashedLoginSessionToken(value string) (HashedLoginSessionToken, error) {
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
 		return HashedLoginSessionToken{}, ErrInvalidSessionToken
 	}
-	return HashedLoginSessionToken{value: value}, nil
+	return HashedLoginSessionToken{value: trimmed}, nil
 }
 
 func (h HashedLoginSessionToken) String() string {
@@ -143,4 +154,26 @@ func buildLoginSession(id uuid.UUID, userID uuid.UUID, token HashedLoginSessionT
 		createdAt: created,
 		expiresAt: expires,
 	}, nil
+}
+
+// SessionData は API へ返却する session-data-struct を表現する。
+type SessionData struct {
+	userID uuid.UUID
+	token  LoginSessionToken
+}
+
+func NewSessionData(userID uuid.UUID, token LoginSessionToken) (SessionData, error) {
+	if userID == uuid.Nil || token.isZero() {
+		return SessionData{}, ErrInvalidSessionData
+	}
+
+	return SessionData{userID: userID, token: token}, nil
+}
+
+func (s SessionData) UserID() uuid.UUID {
+	return s.userID
+}
+
+func (s SessionData) Token() LoginSessionToken {
+	return s.token
 }

@@ -22,7 +22,7 @@ func TestLoginHandler_ServeHTTP_Success(t *testing.T) {
 		t.Fatalf("failed to create token: %v", err)
 	}
 
-	svc := &fakeLoginService{token: token}
+	svc := &fakeLoginService{token: token, userID: uuid.New()}
 	handler := NewLoginHandler(svc)
 
 	name := "admin"
@@ -49,6 +49,10 @@ func TestLoginHandler_ServeHTTP_Success(t *testing.T) {
 
 	if resp.Token != token.String() {
 		t.Fatalf("expected token %s, got %s", token.String(), resp.Token)
+	}
+
+	if resp.UserID != svc.userID.String() {
+		t.Fatalf("expected user_id %s, got %s", svc.userID, resp.UserID)
 	}
 
 	if !svc.called {

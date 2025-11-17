@@ -93,7 +93,7 @@ func scanLoginSession(row rowScanner) (domain.LoginSession, error) {
 		return domain.LoginSession{}, err
 	}
 
-	hashedToken, err := domain.NewHashedLoginSessionTokenFromPersistence(token)
+	hashedToken, err := domain.ParseHashedLoginSessionToken(token)
 	if err != nil {
 		return domain.LoginSession{}, err
 	}

@@ -1,6 +1,9 @@
 package api
 
-import "backend/internal/domain"
+import (
+	"backend/internal/domain"
+	"github.com/google/uuid"
+)
 
 // HueRecordPayload は hue-are-you の回答を JSON で表す。
 type HueRecordPayload struct {
@@ -20,8 +23,8 @@ func NewHueRecordPayload(record domain.HueRecord) HueRecordPayload {
 }
 
 type SaveResultRequest struct {
-	UserName string           `json:"user_name"`
-	Record   HueRecordPayload `json:"record"`
+	Session SessionPayload   `json:"user_name"`
+	Record  HueRecordPayload `json:"record"`
 }
 
 func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
@@ -30,38 +33,53 @@ func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
 		return domain.HueResultSubmission{}, err
 	}
 
-	userData, err := domain.NewName(r.UserName)
+	userID, err := uuid.Parse(r.Session.UserID)
+	if err != nil {
+		return domain.HueResultSubmission{}, err
+	}
+	token, err := domain.ParseLoginSessionToken(r.Session.Token)
+	sessionData, err := domain.NewSessionData(userID, token)
 	if err != nil {
 		return domain.HueResultSubmission{}, err
 	}
 
-	return domain.NewHueResultSubmission(userData, record), nil
+	return domain.NewHueResultSubmission(sessionData, record), nil
 }
 
 // SaveResultResponse は仕様上ボディ不要のため空。
 type SaveResultResponse struct{}
 
 type GetDataRequest struct {
-	Token     string `json:"token"`
-	DataRange []int  `json:"data-range"`
+	Session   SessionPayload `json:"session"`
+	DataRange []int          `json:"data-range"`
 }
 
-func (r GetDataRequest) ToDomain() (domain.LoginSessionToken, domain.RecordRange, error) {
-	token, err := domain.NewLoginSessionTokenFromPersistence(r.Token)
+func (r GetDataRequest) ToDomain() (domain.SessionData, domain.RecordRange, error) {
+	id, err := uuid.Parse(r.Session.UserID)
 	if err != nil {
-		return domain.LoginSessionToken{}, domain.RecordRange{}, err
+		return domain.SessionData{}, domain.RecordRange{}, err
+	}
+
+	token, err := domain.ParseLoginSessionToken(r.Session.Token)
+	if err != nil {
+		return domain.SessionData{}, domain.RecordRange{}, err
 	}
 
 	if len(r.DataRange) != 2 {
-		return domain.LoginSessionToken{}, domain.RecordRange{}, domain.ErrInvalidRange
+		return domain.SessionData{}, domain.RecordRange{}, domain.ErrInvalidRange
 	}
 
 	recordRange, err := domain.NewRecordRange(r.DataRange[0], r.DataRange[1])
 	if err != nil {
-		return domain.LoginSessionToken{}, domain.RecordRange{}, err
+		return domain.SessionData{}, domain.RecordRange{}, err
 	}
 
-	return token, recordRange, nil
+	session, err := domain.NewSessionData(id, token)
+	if err != nil {
+		return domain.SessionData{}, domain.RecordRange{}, err
+	}
+
+	return session, recordRange, nil
 }
 
 type GetDataResponse struct {

@@ -10,6 +10,7 @@ var (
 	ErrInvalidCredential   = errors.New("domain: invalid credential")
 	ErrInvalidSessionToken = errors.New("domain: invalid login session token")
 	ErrInvalidLoginSession = errors.New("domain: invalid login session")
+	ErrInvalidSessionData  = errors.New("domain: invalid session data")
 	ErrInvalidEmail        = errors.New("domain: invalid email")
 	ErrInvalidPasswordHash = errors.New("domain: invalid password hash")
 	ErrInvalidUserRole     = errors.New("domain: invalid user role")

@@ -1,19 +1,19 @@
 package domain
 
 type HueResultSubmission struct {
-	userName Name
-	record   HueRecord
+	session SessionData
+	record  HueRecord
 }
 
-func NewHueResultSubmission(userName Name, record HueRecord) HueResultSubmission {
+func NewHueResultSubmission(session SessionData, record HueRecord) HueResultSubmission {
 	return HueResultSubmission{
-		userName: userName,
-		record:   record,
+		session: session,
+		record:  record,
 	}
 }
 
-func (s HueResultSubmission) UserName() Name {
-	return s.UserName()
+func (s HueResultSubmission) Session() SessionData {
+	return s.session
 }
 
 func (s HueResultSubmission) Record() HueRecord {

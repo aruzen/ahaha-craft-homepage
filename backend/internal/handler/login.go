@@ -58,7 +58,13 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sessionData, err := domain.NewSessionData(id, token)
+	if err != nil {
+		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(id, token))
+	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(sessionData))
 }
