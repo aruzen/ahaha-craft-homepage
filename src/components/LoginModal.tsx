@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
+import { loginAdmin, signInAdmin } from '../api'
 import './LoginModal.css'
 
 export type LoginModalState = 'login' | 'signup' | null
@@ -12,18 +13,28 @@ interface LoginModalProps {
 const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
   const [state, setState] = useState<LoginModalState>(modalState)
   const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
     setState(modalState)
+    if (modalState !== 'signup') {
+      setEmail('')
+      setConfirmPassword('')
+    }
   }, [modalState])
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     if (!username.trim() || !password.trim()) {
       alert('ユーザー名とパスワードを入力してください')
+      return
+    }
+
+    if (state === 'signup' && !email.trim()) {
+      alert('メールアドレスを入力してください')
       return
     }
 
@@ -35,34 +46,19 @@ const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
     setIsLoading(true)
 
     try {
-      const response = await fetch('/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username,
-          password,
-          mode: state,
-        }),
-      })
+      const session =
+        state === 'signup'
+          ? await signInAdmin({ name: username, email, password })
+          : await loginAdmin({ name: username, password })
 
-      if (!response.ok) {
-        const errorBody = await response.json().catch(() => null)
-        const message =
-          (errorBody && (errorBody.message ?? errorBody.error)) ||
-          'ログインに失敗しました。時間をおいて再度お試しください。'
-        throw new Error(message)
-      }
-
-      const data: { token?: string; isAdmin?: boolean } = await response.json()
-      if (!data.token || typeof data.isAdmin !== 'boolean') {
+      if (!session?.token) {
         throw new Error('サーバーから不正なレスポンスを受信しました。')
       }
 
-      onLogin({ username, token: data.token, isAdmin: data.isAdmin })
+      onLogin({ username, token: session.token, isAdmin: true })
       onClose()
       setUsername('')
+      setEmail('')
       setPassword('')
       setConfirmPassword('')
     } catch (error) {
@@ -119,17 +115,30 @@ const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
           </div>
 
           {state === 'signup' && (
-            <div className="form-group">
-              <label htmlFor="confirmPassword">パスワード確認</label>
-              <input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="パスワードを再入力"
-                disabled={isLoading}
-              />
-            </div>
+            <>
+              <div className="form-group">
+                <label htmlFor="email">メールアドレス</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="メールアドレスを入力"
+                  disabled={isLoading}
+                />
+              </div>
+              <div className="form-group">
+                <label htmlFor="confirmPassword">パスワード確認</label>
+                <input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="パスワードを再入力"
+                  disabled={isLoading}
+                />
+              </div>
+            </>
           )}
 
           <button 

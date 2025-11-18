@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { saveHueAreYouResult } from '../../api'
 import StartScreen from './user/StartScreen'
 import SelectionScreen from './user/SelectionScreen'
 import ResultScreen from './user/ResultScreen'
@@ -21,15 +22,21 @@ const HueAreYouApp: React.FC = () => {
   }
 
   const handleSave = async (name: string) => {
-    setUserName(name)
-    // TODO: API呼び出しを実装
-    console.log('Saving results:', { name, assignments })
-    
-    // 模擬API呼び出し
-    return new Promise<void>((resolve) => {
-      setTimeout(() => {
-        resolve()
-      }, 1000)
+    const normalizedName = name.trim() || '匿名'
+    const hasAssignments = Object.keys(assignments).length > 0
+
+    if (!hasAssignments) {
+      throw new Error('保存できる結果がありません')
+    }
+
+    setUserName(normalizedName)
+
+    await saveHueAreYouResult({
+      user_name: normalizedName,
+      record: {
+        name: normalizedName,
+        choice: assignments,
+      },
     })
   }
 

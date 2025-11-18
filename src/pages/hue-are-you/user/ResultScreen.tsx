@@ -30,7 +30,8 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
       await onSave(name.trim())
       setIsSaved(true)
     } catch (error) {
-      alert('保存に失敗しました')
+      const message = error instanceof Error ? error.message : '保存に失敗しました'
+      alert(message)
     } finally {
       setIsSaving(false)
     }
