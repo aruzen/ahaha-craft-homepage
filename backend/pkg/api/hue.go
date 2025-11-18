@@ -23,7 +23,7 @@ func NewHueRecordPayload(record domain.HueRecord) HueRecordPayload {
 }
 
 type SaveResultRequest struct {
-	Session SessionPayload   `json:"user_name"`
+	Session SessionPayload   `json:"session"`
 	Record  HueRecordPayload `json:"record"`
 }
 
@@ -38,6 +38,9 @@ func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
 		return domain.HueResultSubmission{}, err
 	}
 	token, err := domain.ParseLoginSessionToken(r.Session.Token)
+	if err != nil {
+		return domain.HueResultSubmission{}, err
+	}
 	sessionData, err := domain.NewSessionData(userID, token)
 	if err != nil {
 		return domain.HueResultSubmission{}, err
