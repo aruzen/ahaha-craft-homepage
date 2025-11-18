@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import LoginModal, { type LoginModalState } from './components/LoginModal'
+import type { UserRole } from './api'
 import Home from './pages/home/Home'
 import HueAreYouApp from './pages/hue-are-you/HueAreYouApp'
 import Portfolio from './pages/portfolio/Portfolio'
@@ -16,9 +17,10 @@ function App() {
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
   const [authToken, setAuthToken] = useState<string | null>(null)
   const [user, setUser] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
   const location = useLocation()
   const isAuthenticated = authToken !== null
+  const isAdmin = userRole === 'admin'
 
   useEffect(() => {
     setIsMobileMenuOpen(false)
@@ -117,7 +119,7 @@ function App() {
                           onClick={() => {
                             setAuthToken(null)
                             setUser(null)
-                            setIsAdmin(false)
+                            setUserRole(null)
                           }}
                         >
                           Logout
@@ -157,10 +159,10 @@ function App() {
       <LoginModal
         modalState={modalState}
         onClose={() => setLoginModalState(null)}
-        onLogin={({ username, token, isAdmin }) => {
+        onLogin={({ username, token, role }) => {
           setAuthToken(token)
           setUser(username)
-          setIsAdmin(isAdmin)
+          setUserRole(role)
         }}
       />
     </div>

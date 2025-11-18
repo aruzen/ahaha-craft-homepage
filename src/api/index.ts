@@ -1,10 +1,10 @@
 import type {
-  AdminLoginPayload,
-  AdminSignInPayload,
+  LoginPayload,
+  SignInPayload,
   FetchHueAreYouDataParams,
   HueAreYouDataResponse,
   SaveHueAreYouResultPayload,
-  SessionData,
+  SessionResponce,
 } from './types'
 
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:8080/api/'
@@ -146,21 +146,21 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   return (data ?? undefined) as T
 }
 
-export const loginAdmin = async (
-  credentials: AdminLoginPayload,
+export const login = async (
+  credentials: LoginPayload,
   options?: { signal?: AbortSignal }
-): Promise<SessionData> =>
-  request<SessionData>('login', {
+): Promise<SessionResponce> =>
+  request<SessionResponce>('login', {
     method: 'POST',
     body: credentials,
     signal: options?.signal,
   })
 
-export const signInAdmin = async (
-  payload: AdminSignInPayload,
+export const signIn = async (
+  payload: SignInPayload,
   options?: { signal?: AbortSignal }
-): Promise<SessionData> =>
-  request<SessionData>('sign-in', {
+): Promise<SessionResponce> =>
+  request<SessionResponce>('sign-in', {
     method: 'POST',
     body: payload,
     signal: options?.signal,
