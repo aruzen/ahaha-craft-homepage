@@ -16,17 +16,16 @@ import (
 )
 
 func TestHueSaveHandler_ServeHTTP_Success(t *testing.T) {
-	token, _ := domain.NewLoginSessionToken()
-	session, _ := domain.NewSessionData(uuid.New(), token)
 	record := buildHueRecord(t)
-	submission := domain.NewHueResultSubmission(session, record)
 
-	svc := &fakeHueSaveService{submission: submission}
+	svc := &fakeHueSaveService{record: record}
 	handler := NewHueSaveHandler(svc)
 
 	reqBody := marshal(t, api.SaveResultRequest{
-		Session: api.NewSessionPayload(session),
-		Record:  api.NewHueRecordPayload(record),
+		HueRecordPayload: api.HueRecordPayload{
+			record.Name().String(),
+			record.ChoiceMap(),
+		},
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/hue/save", strings.NewReader(reqBody))
 	res := httptest.NewRecorder()
@@ -56,7 +55,7 @@ func TestHueSaveHandler_InvalidJSON(t *testing.T) {
 
 func TestHueSaveHandler_InvalidDomain(t *testing.T) {
 	handler := NewHueSaveHandler(&fakeHueSaveService{})
-	req := httptest.NewRequest(http.MethodPost, "/api/hue/save", strings.NewReader(`{"session":{"user_id":"bad","token":""},"record":{"name":"a","choice":{"w":"赤"}}}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/save", strings.NewReader(`{"user_name":" ","record":{"name":"a","choice":{"w":"赤"}}}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -66,36 +65,15 @@ func TestHueSaveHandler_InvalidDomain(t *testing.T) {
 	}
 }
 
-func TestHueSaveHandler_Unauthorized(t *testing.T) {
-	svc := &fakeHueSaveService{err: domain.ErrInvalidSessionToken}
-	handler := NewHueSaveHandler(svc)
-
-	token, _ := domain.NewLoginSessionToken()
-	session, _ := domain.NewSessionData(uuid.New(), token)
-	record := buildHueRecord(t)
-	req := httptest.NewRequest(http.MethodPost, "/api/hue/save", strings.NewReader(marshal(t, api.SaveResultRequest{
-		Session: api.NewSessionPayload(session),
-		Record:  api.NewHueRecordPayload(record),
-	})))
-	res := httptest.NewRecorder()
-
-	handler.ServeHTTP(res, req)
-
-	if res.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401, got %d", res.Code)
-	}
-}
-
 func TestHueSaveHandler_InternalError(t *testing.T) {
 	svc := &fakeHueSaveService{err: errors.New("boom")}
 	handler := NewHueSaveHandler(svc)
-
-	token, _ := domain.NewLoginSessionToken()
-	session, _ := domain.NewSessionData(uuid.New(), token)
 	record := buildHueRecord(t)
 	req := httptest.NewRequest(http.MethodPost, "/api/hue/save", strings.NewReader(marshal(t, api.SaveResultRequest{
-		Session: api.NewSessionPayload(session),
-		Record:  api.NewHueRecordPayload(record),
+		HueRecordPayload: api.HueRecordPayload{
+			record.Name().String(),
+			record.ChoiceMap(),
+		},
 	})))
 	res := httptest.NewRecorder()
 
@@ -224,14 +202,14 @@ func TestHueGetHandler_MethodNotAllowed(t *testing.T) {
 }
 
 type fakeHueSaveService struct {
-	submission domain.HueResultSubmission
-	err        error
-	called     bool
+	record domain.HueRecord
+	err    error
+	called bool
 }
 
-func (f *fakeHueSaveService) SaveResult(_ context.Context, submission domain.HueResultSubmission) error {
+func (f *fakeHueSaveService) SaveResult(_ context.Context, record domain.HueRecord) error {
 	f.called = true
-	f.submission = submission
+	f.record = record
 	if f.err != nil {
 		return f.err
 	}
@@ -274,4 +252,13 @@ func buildHueRecord(t *testing.T) domain.HueRecord {
 		t.Fatalf("record error: %v", err)
 	}
 	return record
+}
+
+func buildName(t *testing.T, value string) domain.Name {
+	t.Helper()
+	name, err := domain.NewName(value)
+	if err != nil {
+		t.Fatalf("failed to create name: %v", err)
+	}
+	return name
 }

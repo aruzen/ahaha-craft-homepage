@@ -158,11 +158,15 @@ type fakeLoginService struct {
 	called     bool
 }
 
-func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (uuid.UUID, domain.LoginSessionToken, error) {
+func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (domain.SessionData, error) {
 	f.called = true
 	f.credential = credential
 	if f.err != nil {
-		return uuid.Nil, domain.LoginSessionToken{}, f.err
+		return domain.SessionData{}, f.err
 	}
-	return f.userID, f.token, nil
+	session, err := domain.NewSessionData(f.userID, f.token)
+	if err != nil {
+		return domain.SessionData{}, err
+	}
+	return session, nil
 }

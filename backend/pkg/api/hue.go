@@ -23,30 +23,15 @@ func NewHueRecordPayload(record domain.HueRecord) HueRecordPayload {
 }
 
 type SaveResultRequest struct {
-	Session SessionPayload   `json:"session"`
-	Record  HueRecordPayload `json:"record"`
+	HueRecordPayload
 }
 
-func (r SaveResultRequest) ToDomain() (domain.HueResultSubmission, error) {
-	record, err := r.Record.ToDomain()
+func (r SaveResultRequest) ToDomain() (domain.HueRecord, error) {
+	record, err := r.HueRecordPayload.ToDomain()
 	if err != nil {
-		return domain.HueResultSubmission{}, err
+		return domain.HueRecord{}, err
 	}
-
-	userID, err := uuid.Parse(r.Session.UserID)
-	if err != nil {
-		return domain.HueResultSubmission{}, err
-	}
-	token, err := domain.ParseLoginSessionToken(r.Session.Token)
-	if err != nil {
-		return domain.HueResultSubmission{}, err
-	}
-	sessionData, err := domain.NewSessionData(userID, token)
-	if err != nil {
-		return domain.HueResultSubmission{}, err
-	}
-
-	return domain.NewHueResultSubmission(sessionData, record), nil
+	return record, nil
 }
 
 // SaveResultResponse は仕様上ボディ不要のため空。

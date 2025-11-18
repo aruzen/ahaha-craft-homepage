@@ -12,7 +12,7 @@ import (
 
 // HueSaveService は Hue 結果保存のユースケース境界。
 type HueSaveService interface {
-	SaveResult(ctx context.Context, submission domain.HueResultSubmission) error
+	SaveResult(ctx context.Context, record domain.HueRecord) error
 }
 
 // HueGetService は Hue データ取得のユースケース境界。
