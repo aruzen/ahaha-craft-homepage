@@ -126,10 +126,7 @@ export const loginAdmin = async (
 ): Promise<SessionData> =>
   request<SessionData>('login', {
     method: 'POST',
-    searchParams: {
-      name: credentials.name,
-      password: credentials.password,
-    },
+    body: credentials,
     signal: options?.signal,
   })
 
@@ -139,11 +136,7 @@ export const signInAdmin = async (
 ): Promise<SessionData> =>
   request<SessionData>('sign-in', {
     method: 'POST',
-    searchParams: {
-      name: payload.name,
-      email: payload.email,
-      password: payload.password,
-    },
+    body: payload,
     signal: options?.signal,
   })
 
@@ -163,9 +156,9 @@ export const fetchHueAreYouRecords = async (
 ): Promise<HueAreYouDataResponse> =>
   request<HueAreYouDataResponse>('hue-are-you/get-data', {
     method: 'GET',
-    searchParams: {
-      session: JSON.stringify(params.session),
-      'data-range': JSON.stringify(params.dataRange),
+    body: {
+      session: params.session,
+      'data-range': params.dataRange,
     },
     signal: options?.signal,
   })
