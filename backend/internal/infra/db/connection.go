@@ -8,10 +8,6 @@ import (
 
 func NewConnection(ctx context.Context) (*pgxpool.Pool, error) {
 	dsn := os.Getenv("DATABASE_URL")
-	if dsn == "" {
-		// TODO 消す
-		dsn = "postgres://mnibackend:gatigatinopass@localhost:5432/my_name_is_backend?sslmode=disable"
-	}
 
 	config, err := pgxpool.ParseConfig(dsn)
 	if err != nil {

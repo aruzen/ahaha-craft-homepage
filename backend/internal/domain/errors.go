@@ -17,4 +17,7 @@ var (
 	ErrInvalidPasswordHash = errors.New("domain: invalid password hash")
 	ErrInvalidUserRole     = errors.New("domain: invalid user role")
 	ErrInvalidUser         = errors.New("domain: invalid user")
+	ErrDuplicateUsername   = errors.New("domain: duplicate username")
+	ErrDuplicateEmail      = errors.New("domain: duplicate email")
+	ErrInvalidAPIError     = errors.New("domain: invalid api error")
 )

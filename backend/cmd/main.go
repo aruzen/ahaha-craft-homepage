@@ -56,7 +56,7 @@ func main() {
 func newHTTPServer(pool *pgxpool.Pool, logger *log.Logger) *http.Server {
 	return &http.Server{
 		Addr:              serverAddr(),
-		Handler:           newHTTPHandler(pool),
+		Handler:           newHTTPHandler(pool, logger),
 		ReadHeaderTimeout: 5 * time.Second,
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -64,15 +64,15 @@ func newHTTPServer(pool *pgxpool.Pool, logger *log.Logger) *http.Server {
 	}
 }
 
-func newHTTPHandler(pool *pgxpool.Pool) http.Handler {
+func newHTTPHandler(pool *pgxpool.Pool, logger *log.Logger) http.Handler {
 	userRepo := repository.NewUserRepository(pool)
 	sessionRepo := repository.NewLoginSessionRepository(pool)
 	hueRepo := repository.NewHueRepository(pool)
 
-	signInService := service.NewSignInService(userRepo, sessionRepo)
-	loginService := service.NewLoginService(userRepo, sessionRepo)
-	hueSaveService := service.NewHueSaveService(hueRepo)
-	hueGetService := service.NewHueGetService(hueRepo, sessionRepo)
+	signInService := service.NewSignInService(userRepo, sessionRepo, logger)
+	loginService := service.NewLoginService(userRepo, sessionRepo, logger)
+	hueSaveService := service.NewHueSaveService(hueRepo, logger)
+	hueGetService := service.NewHueGetService(hueRepo, sessionRepo, logger)
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/sign-in", withCORS(handler.NewSignInHandler(signInService)))

@@ -26,8 +26,7 @@ func NewSignInHandler(service SignInService) *SignInHandler {
 
 func (h *SignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		respondMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
@@ -35,23 +34,28 @@ func (h *SignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidJSON(w)
 		return
 	}
 
 	credential, err := req.ToDomain()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidField(w, "credential")
 		return
 	}
 
 	session, err := h.service.SignIn(r.Context(), credential)
 	if err != nil {
-		if errors.Is(err, domain.ErrInvalidCredential) {
-			http.Error(w, http.StatusText(http.StatusConflict), http.StatusConflict)
-			return
+		switch {
+		case errors.Is(err, domain.ErrDuplicateUsername):
+			respondDuplicateField(w, "username")
+		case errors.Is(err, domain.ErrDuplicateEmail):
+			respondDuplicateField(w, "email")
+		case errors.Is(err, domain.ErrInvalidCredential):
+			respondInvalidCredential(w, http.StatusConflict)
+		default:
+			respondInternalServerError(w)
 		}
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 

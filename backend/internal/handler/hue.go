@@ -31,8 +31,7 @@ func NewHueSaveHandler(service HueSaveService) *HueSaveHandler {
 
 func (h *HueSaveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		w.Header().Set("Allow", http.MethodPost)
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		respondMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
@@ -41,14 +40,14 @@ func (h *HueSaveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
 		log.Print("error: ", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidJSON(w)
 		return
 	}
 
 	submission, err := req.ToDomain()
 	if err != nil {
 		log.Print("error: ", err)
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidField(w, "record")
 		return
 	}
 
@@ -70,8 +69,7 @@ func NewHueGetHandler(service HueGetService) *HueGetHandler {
 
 func (h *HueGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+		respondMethodNotAllowed(w, http.MethodGet)
 		return
 	}
 
@@ -79,13 +77,21 @@ func (h *HueGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidJSON(w)
 		return
 	}
 
 	session, recordRange, err := req.ToDomain()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		switch {
+		case errors.Is(err, domain.ErrInvalidSessionToken),
+			errors.Is(err, domain.ErrInvalidSessionData):
+			respondInvalidField(w, "session")
+		case errors.Is(err, domain.ErrInvalidRange):
+			respondInvalidField(w, "data-range")
+		default:
+			respondInvalidField(w, "request")
+		}
 		return
 	}
 
@@ -105,8 +111,8 @@ func handleHueServiceError(w http.ResponseWriter, err error) {
 	case errors.Is(err, domain.ErrInvalidSessionToken),
 		errors.Is(err, domain.ErrInvalidLoginSession),
 		errors.Is(err, domain.ErrExpiredToken):
-		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		respondUnauthorizedSession(w)
 	default:
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		respondInternalServerError(w)
 	}
 }

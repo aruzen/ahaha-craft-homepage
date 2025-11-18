@@ -27,9 +27,8 @@ func NewLoginHandler(service LoginService) *LoginHandler {
 
 // ServeHTTP は JSON リクエストをデコードし、ドメインに変換してサービスへ委譲する。
 func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.Header().Set("Allow", http.MethodGet)
-		http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+	if r.Method != http.MethodPost {
+		respondMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
@@ -37,23 +36,23 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
 	if err := decoder.Decode(&req); err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidJSON(w)
 		return
 	}
 
 	credential, err := req.ToDomain()
 	if err != nil {
-		http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+		respondInvalidField(w, "credential")
 		return
 	}
 
 	session, err := h.service.Login(r.Context(), credential)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredential) {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
+			respondInvalidCredential(w, http.StatusUnauthorized)
+		} else {
+			respondInternalServerError(w)
 		}
-		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
 
