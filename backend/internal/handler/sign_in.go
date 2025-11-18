@@ -12,7 +12,7 @@ import (
 
 // SignInService はサインイン処理を司るユースケース層の抽象インターフェース。
 type SignInService interface {
-	SignIn(ctx context.Context, credential domain.SignInCredential) (domain.SessionData, error)
+	SignIn(ctx context.Context, credential domain.SignInCredential) (domain.SessionData, domain.UserRole, error)
 }
 
 // SignInHandler は /api/sign-in の HTTP リクエストを処理する。
@@ -44,7 +44,7 @@ func (h *SignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.service.SignIn(r.Context(), credential)
+	session, role, err := h.service.SignIn(r.Context(), credential)
 	if err != nil {
 		switch {
 		case errors.Is(err, domain.ErrDuplicateUsername):
@@ -61,5 +61,5 @@ func (h *SignInHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(api.NewSignInResponse(session))
+	_ = json.NewEncoder(w).Encode(api.NewSignInResponse(session, role))
 }

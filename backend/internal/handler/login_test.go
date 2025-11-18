@@ -22,14 +22,14 @@ func TestLoginHandler_ServeHTTP_Success(t *testing.T) {
 		t.Fatalf("failed to create token: %v", err)
 	}
 
-	svc := &fakeLoginService{token: token, userID: uuid.New()}
+	svc := &fakeLoginService{token: token, userID: uuid.New(), role: domain.UserRoleAdmin}
 	handler := NewLoginHandler(svc)
 
 	name := "admin"
 	password := "secret"
 	body := fmt.Sprintf(`{"name":"%v","password":"%v"}`, name, password)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/login", strings.NewReader(body))
+	req := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader(body))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -55,6 +55,10 @@ func TestLoginHandler_ServeHTTP_Success(t *testing.T) {
 		t.Fatalf("expected user_id %s, got %s", svc.userID, resp.UserID)
 	}
 
+	if resp.Role != svc.role.String() {
+		t.Fatalf("expected role %s, got %s", svc.role, resp.Role)
+	}
+
 	if !svc.called {
 		t.Fatalf("service.Login was not called")
 	}
@@ -72,7 +76,7 @@ func TestLoginHandler_ServeHTTP_InvalidJSON(t *testing.T) {
 	svc := &fakeLoginService{}
 	handler := NewLoginHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/login", strings.NewReader(`{"name":1}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader(`{"name":1}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -90,7 +94,7 @@ func TestLoginHandler_ServeHTTP_InvalidDomainInput(t *testing.T) {
 	svc := &fakeLoginService{}
 	handler := NewLoginHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/login", strings.NewReader(`{"name":" ","hashed_password":"secret"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader(`{"name":" ","hashed_password":"secret"}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -108,7 +112,7 @@ func TestLoginHandler_ServeHTTP_InvalidCredential(t *testing.T) {
 	svc := &fakeLoginService{err: domain.ErrInvalidCredential}
 	handler := NewLoginHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/login", strings.NewReader(`{"name":"admin","password":"secret"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader(`{"name":"admin","password":"secret"}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -122,7 +126,7 @@ func TestLoginHandler_ServeHTTP_InternalError(t *testing.T) {
 	svc := &fakeLoginService{err: errors.New("boom")}
 	handler := NewLoginHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/login", strings.NewReader(`{"name":"admin","password":"secret"}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/login", strings.NewReader(`{"name":"admin","password":"secret"}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -136,7 +140,7 @@ func TestLoginHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 	svc := &fakeLoginService{}
 	handler := NewLoginHandler(svc)
 
-	req := httptest.NewRequest(http.MethodPost, "/api/login", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/login", nil)
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -145,8 +149,8 @@ func TestLoginHandler_ServeHTTP_MethodNotAllowed(t *testing.T) {
 		t.Fatalf("expected status 405, got %d", res.Code)
 	}
 
-	if allow := res.Header().Get("Allow"); allow != http.MethodGet {
-		t.Fatalf("expected Allow header %s, got %s", http.MethodGet, allow)
+	if allow := res.Header().Get("Allow"); allow != http.MethodPost {
+		t.Fatalf("expected Allow header %s, got %s", http.MethodPost, allow)
 	}
 }
 
@@ -154,19 +158,24 @@ type fakeLoginService struct {
 	credential domain.AdminCredential
 	userID     uuid.UUID
 	token      domain.LoginSessionToken
+	role       domain.UserRole
 	err        error
 	called     bool
 }
 
-func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (domain.SessionData, error) {
+func (f *fakeLoginService) Login(_ context.Context, credential domain.AdminCredential) (domain.SessionData, domain.UserRole, error) {
 	f.called = true
 	f.credential = credential
 	if f.err != nil {
-		return domain.SessionData{}, f.err
+		return domain.SessionData{}, "", f.err
+	}
+	role := f.role
+	if role == "" {
+		role = domain.UserRoleAdmin
 	}
 	session, err := domain.NewSessionData(f.userID, f.token)
 	if err != nil {
-		return domain.SessionData{}, err
+		return domain.SessionData{}, "", err
 	}
-	return session, nil
+	return session, role, nil
 }

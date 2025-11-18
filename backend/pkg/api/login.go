@@ -18,8 +18,9 @@ func (r LoginRequest) ToDomain() (domain.AdminCredential, error) {
 
 type LoginResponse struct {
 	SessionPayload
+	Role string `json:"role"`
 }
 
-func NewLoginResponse(session domain.SessionData) LoginResponse {
-	return LoginResponse{SessionPayload: NewSessionPayload(session)}
+func NewLoginResponse(session domain.SessionData, role domain.UserRole) LoginResponse {
+	return LoginResponse{SessionPayload: NewSessionPayload(session), Role: role.String()}
 }

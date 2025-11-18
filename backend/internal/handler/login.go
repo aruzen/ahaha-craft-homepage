@@ -12,7 +12,7 @@ import (
 
 // LoginService は認証処理を司るユースケース層の抽象インターフェース。
 type LoginService interface {
-	Login(ctx context.Context, credential domain.AdminCredential) (domain.SessionData, error)
+	Login(ctx context.Context, credential domain.AdminCredential) (domain.SessionData, domain.UserRole, error)
 }
 
 // LoginHandler は /api/login の HTTP リクエストを処理する。
@@ -46,7 +46,7 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	session, err := h.service.Login(r.Context(), credential)
+	session, role, err := h.service.Login(r.Context(), credential)
 	if err != nil {
 		if errors.Is(err, domain.ErrInvalidCredential) {
 			respondInvalidCredential(w, http.StatusUnauthorized)
@@ -58,5 +58,5 @@ func (h *LoginHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(session))
+	_ = json.NewEncoder(w).Encode(api.NewLoginResponse(session, role))
 }

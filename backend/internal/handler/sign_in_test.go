@@ -144,14 +144,19 @@ func TestSignInHandler_MethodNotAllowed(t *testing.T) {
 
 type fakeSignInService struct {
 	session domain.SessionData
+	role    domain.UserRole
 	err     error
 	called  bool
 }
 
-func (f *fakeSignInService) SignIn(_ context.Context, _ domain.SignInCredential) (domain.SessionData, error) {
+func (f *fakeSignInService) SignIn(_ context.Context, _ domain.SignInCredential) (domain.SessionData, domain.UserRole, error) {
 	f.called = true
 	if f.err != nil {
-		return domain.SessionData{}, f.err
+		return domain.SessionData{}, "", f.err
 	}
-	return f.session, nil
+	role := f.role
+	if role == "" {
+		role = domain.UserRoleAdmin
+	}
+	return f.session, role, nil
 }

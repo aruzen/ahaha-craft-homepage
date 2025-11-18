@@ -14,8 +14,9 @@ func (r SignInRequest) ToDomain() (domain.SignInCredential, error) {
 
 type SignInResponse struct {
 	SessionPayload
+	Role string `json:"role"`
 }
 
-func NewSignInResponse(session domain.SessionData) SignInResponse {
-	return SignInResponse{SessionPayload: NewSessionPayload(session)}
+func NewSignInResponse(session domain.SessionData, role domain.UserRole) SignInResponse {
+	return SignInResponse{SessionPayload: NewSessionPayload(session), Role: role.String()}
 }
