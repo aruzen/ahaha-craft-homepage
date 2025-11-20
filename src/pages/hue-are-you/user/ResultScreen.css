@@ -100,6 +100,10 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+.save-error {
+  width: 100%;
+}
+
 .name-input-group {
   display: flex;
   flex-direction: column;

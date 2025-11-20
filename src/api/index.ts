@@ -181,7 +181,7 @@ export const fetchHueAreYouRecords = async (
   options?: { signal?: AbortSignal }
 ): Promise<HueAreYouDataResponse> =>
   request<HueAreYouDataResponse>('hue-are-you/get-data', {
-    method: 'GET',
+    method: 'POST',
     body: {
       session: params.session,
       'data-range': params.dataRange,

@@ -1,4 +1,6 @@
 import React, { useState } from 'react'
+import { ApiError } from '../../../api'
+import ErrorNotice, { type ErrorDescriptor } from '../../../components/ErrorNotice'
 import { colorToHex } from '../../../data/colors'
 import './ResultScreen.css'
 
@@ -18,10 +20,11 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
   const [name, setName] = useState(userName)
   const [isSaving, setIsSaving] = useState(false)
   const [isSaved, setIsSaved] = useState(false)
+  const [errorNotice, setErrorNotice] = useState<ErrorDescriptor | null>(null)
 
   const handleSave = async () => {
     if (!name.trim()) {
-      alert('名前を入力してください')
+      setErrorNotice({ message: '名前を入力してください', field: 'name' })
       return
     }
     
@@ -29,9 +32,15 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
     try {
       await onSave(name.trim())
       setIsSaved(true)
+      setErrorNotice(null)
     } catch (error) {
-      const message = error instanceof Error ? error.message : '保存に失敗しました'
-      alert(message)
+      if (error instanceof ApiError) {
+        setErrorNotice({ message: error.message, field: error.field, code: error.code })
+      } else if (error instanceof Error) {
+        setErrorNotice({ message: error.message })
+      } else {
+        setErrorNotice({ message: '保存に失敗しました' })
+      }
     } finally {
       setIsSaving(false)
     }
@@ -98,6 +107,11 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
             >
               {isSaving ? '保存中...' : '結果を保存'}
             </button>
+            {errorNotice && (
+              <div className="save-error">
+                <ErrorNotice {...errorNotice} onDismiss={() => setErrorNotice(null)} />
+              </div>
+            )}
           </div>
         )}
 

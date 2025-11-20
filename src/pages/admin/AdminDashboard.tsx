@@ -7,6 +7,7 @@ import {
   type SessionResponce,
 } from '../../api'
 import { colorToHex } from '../../data/colors'
+import ErrorNotice, { type ErrorDescriptor } from '../../components/ErrorNotice'
 import './AdminDashboard.css'
 
 type AdminNavItem = 'user-management' | 'hue-results'
@@ -113,7 +114,7 @@ const HueResultsPanel = ({ session }: HueResultsPanelProps) => {
   const [rangeStart, setRangeStart] = useState(0)
   const [rangeEnd, setRangeEnd] = useState(24)
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<ErrorDescriptor | null>(null)
   const [records, setRecords] = useState<HueAreYouRecord[]>([])
   const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null)
 
@@ -121,7 +122,7 @@ const HueResultsPanel = ({ session }: HueResultsPanelProps) => {
     event.preventDefault()
 
     if (rangeStart < 0 || rangeEnd < 0 || rangeStart > rangeEnd) {
-      setError('データ範囲が不正です')
+      setError({ message: 'データ範囲が不正です', field: 'data-range' })
       return
     }
 
@@ -137,8 +138,11 @@ const HueResultsPanel = ({ session }: HueResultsPanelProps) => {
       setRecords(response.records ?? [])
       setLastFetchedAt(new Date())
     } catch (err) {
-      const message = err instanceof ApiError ? err.message : 'データ取得に失敗しました'
-      setError(message)
+      if (err instanceof ApiError) {
+        setError({ message: err.message, field: err.field, code: err.code })
+      } else {
+        setError({ message: 'データ取得に失敗しました' })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -180,7 +184,7 @@ const HueResultsPanel = ({ session }: HueResultsPanelProps) => {
         </button>
       </form>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && <ErrorNotice {...error} onDismiss={() => setError(null)} />}
 
       <div className="records-list">
         {records.length === 0 && !isLoading && (

@@ -1,0 +1,42 @@
+.error-notice {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 111, 97, 0.5);
+  background: rgba(255, 111, 97, 0.12);
+  color: #ffb3aa;
+  font-size: 0.95rem;
+}
+
+.error-title {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.error-message {
+  margin: 4px 0;
+}
+
+.error-field {
+  margin-right: 6px;
+  color: #ffc7c0;
+}
+
+.error-code {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.8;
+}
+
+.error-dismiss {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.2rem;
+  cursor: pointer;
+  align-self: flex-start;
+}

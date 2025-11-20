@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import LoginModal, { type LoginModalState } from './components/LoginModal'
 import type { SessionResponce, UserRole } from './api'
@@ -10,17 +10,19 @@ import ToyDetail from './pages/toy-space/ToyDetail'
 import Contact from './pages/contact/Contact'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import { ToySpaceProvider } from './contexts/ToySpaceContext'
+import { clearSessionState, loadSessionState, saveSessionState } from './utils/sessionStorage'
 import './App.css'
 
 const navClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'active' : ''
 
 function App() {
+  const persistedSession = useRef(loadSessionState())
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
-  const [session, setSession] = useState<SessionResponce | null>(null)
-  const [user, setUser] = useState<string | null>(null)
-  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [session, setSession] = useState<SessionResponce | null>(persistedSession.current?.session ?? null)
+  const [user, setUser] = useState<string | null>(persistedSession.current?.user ?? null)
+  const [userRole, setUserRole] = useState<UserRole | null>(persistedSession.current?.session?.role ?? null)
   const location = useLocation()
   const isAuthenticated = session !== null
   const isAdmin = userRole === 'admin'
@@ -59,6 +61,12 @@ function App() {
   const handleNavClick = () => {
     setIsMobileMenuOpen(false)
   }
+
+  useEffect(() => {
+    if (session && user) {
+      saveSessionState({ user, session })
+    }
+  }, [session, user])
 
   return (
     <div className="App">
@@ -130,6 +138,7 @@ function App() {
                             setSession(null)
                             setUser(null)
                             setUserRole(null)
+                            clearSessionState()
                           }}
                         >
                           Logout
