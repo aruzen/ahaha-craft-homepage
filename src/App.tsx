@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import LoginModal, { type LoginModalState } from './components/LoginModal'
-import type { UserRole } from './api'
+import type { SessionResponce, UserRole } from './api'
 import Home from './pages/home/Home'
 import HueAreYouApp from './pages/hue-are-you/HueAreYouApp'
 import Portfolio from './pages/portfolio/Portfolio'
 import ToySpace from './pages/toy-space/ToySpace'
+import ToyDetail from './pages/toy-space/ToyDetail'
 import Contact from './pages/contact/Contact'
+import AdminDashboard from './pages/admin/AdminDashboard'
+import { ToySpaceProvider } from './contexts/ToySpaceContext'
 import './App.css'
 
 const navClassName = ({ isActive }: { isActive: boolean }) =>
@@ -15,11 +18,11 @@ const navClassName = ({ isActive }: { isActive: boolean }) =>
 function App() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
-  const [authToken, setAuthToken] = useState<string | null>(null)
+  const [session, setSession] = useState<SessionResponce | null>(null)
   const [user, setUser] = useState<string | null>(null)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const location = useLocation()
-  const isAuthenticated = authToken !== null
+  const isAuthenticated = session !== null
   const isAdmin = userRole === 'admin'
 
   useEffect(() => {
@@ -106,6 +109,13 @@ function App() {
                     GitHub
                   </a>
                 </li>
+                {isAdmin && (
+                  <li>
+                    <NavLink to="/admin" className={navClassName} onClick={handleNavClick}>
+                      管理者画面
+                    </NavLink>
+                  </li>
+                )}
                 <li>
                   <div className="auth-buttons">
                     {isAuthenticated ? (
@@ -117,7 +127,7 @@ function App() {
                         <button
                           className="logout-btn"
                           onClick={() => {
-                            setAuthToken(null)
+                            setSession(null)
                             setUser(null)
                             setUserRole(null)
                           }}
@@ -152,17 +162,42 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/hue-are-you" element={<HueAreYouApp />} />
         <Route path="/portfolio" element={<Portfolio />} />
-        <Route path="/toy-space" element={<ToySpace />} />
+        <Route
+          path="/toy-space"
+          element={
+            <ToySpaceProvider>
+              <ToySpace />
+            </ToySpaceProvider>
+          }
+        />
+        <Route
+          path="/toy-space/:slug"
+          element={
+            <ToySpaceProvider>
+              <ToyDetail />
+            </ToySpaceProvider>
+          }
+        />
         <Route path="/contact" element={<Contact />} />
+        <Route
+          path="/admin"
+          element={
+            isAdmin && session ? (
+              <AdminDashboard username={user ?? 'Administrator'} session={session} />
+            ) : (
+              <Navigate to="/" replace />
+            )
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <LoginModal
         modalState={modalState}
         onClose={() => setLoginModalState(null)}
-        onLogin={({ username, token, role }) => {
-          setAuthToken(token)
+        onLogin={({ username, session }) => {
+          setSession(session)
           setUser(username)
-          setUserRole(role)
+          setUserRole(session.role)
         }}
       />
     </div>

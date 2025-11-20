@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
-import { ApiError, login, signIn, type UserRole } from '../api'
+import { ApiError, login, signIn, type SessionResponce } from '../api'
 import './LoginModal.css'
 
 export type LoginModalState = 'login' | 'signup' | null
@@ -7,7 +7,7 @@ export type LoginModalState = 'login' | 'signup' | null
 interface LoginModalProps {
   modalState: LoginModalState
   onClose: () => void
-  onLogin: (payload: { username: string; token: string; role: UserRole }) => void
+  onLogin: (payload: { username: string; session: SessionResponce }) => void
 }
 
 const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
@@ -55,7 +55,7 @@ const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
         throw new Error('サーバーから不正なレスポンスを受信しました。')
       }
 
-      onLogin({ username, token: session.token, role: session.role })
+      onLogin({ username, session })
       onClose()
       setUsername('')
       setEmail('')
