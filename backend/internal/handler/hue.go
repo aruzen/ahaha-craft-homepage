@@ -68,8 +68,8 @@ func NewHueGetHandler(service HueGetService) *HueGetHandler {
 }
 
 func (h *HueGetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		respondMethodNotAllowed(w, http.MethodGet)
+	if r.Method != http.MethodPost {
+		respondMethodNotAllowed(w, http.MethodPost)
 		return
 	}
 
