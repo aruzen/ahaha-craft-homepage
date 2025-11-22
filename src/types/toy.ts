@@ -20,6 +20,7 @@ export interface ToyEntry {
   heroImage?: string
   repositoryUrl?: string
   slug: string
+  content: string
 }
 
 export interface ToySearchCriteria {

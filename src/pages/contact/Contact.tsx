@@ -5,7 +5,7 @@ const navClassName = ({ isActive }: { isActive: boolean }) =>
 
 const Contact = () => {
   return (
-    <main>
+    <main id="home">
       <section id="contact">
         <h2>Contact</h2>
         <p>ご意見・ご質問がありましたらお気軽にご連絡ください。</p>

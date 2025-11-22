@@ -21,23 +21,7 @@ const ToySpace = () => {
       <section className="toyspace-hero">
         <div>
           <p className="toyspace-eyebrow">TOY SPACE</p>
-          <h1>技術スケッチと小さなプロジェクトの遊び場</h1>
-          <p>
-            {toyEntries.length}件のToyと{toyTags.length}種類のタグを横断検索。キーワード、カテゴリ、難易度、タグの組み合わせで最短ルートにたどり着けます。
-          </p>
-        </div>
-        <div className="toyspace-stats">
-          <div>
-            <span>現在の検索語</span>
-            <strong>{criteria.query || '（未入力）'}</strong>
-          </div>
-          <div>
-            <span>ヒット数</span>
-            <strong>{filteredToys.length}</strong>
-          </div>
-          <button type="button" onClick={resetFilters}>
-            条件をクリア
-          </button>
+          <h1>技術スケッチとソースコードの遊び場</h1>
         </div>
       </section>
 
@@ -54,11 +38,25 @@ const ToySpace = () => {
         onToggleTag={toggleTag}
       />
 
+      <div className="toyspace-stats">
+        <div>
+          <span>現在の検索語</span>
+          <strong>{criteria.query || '（未入力）'}</strong>
+        </div>
+        <div>
+          <span>ヒット数</span>
+          <strong>{filteredToys.length}</strong>
+        </div>
+        <button type="button" onClick={resetFilters}>
+          条件をクリア
+        </button>
+      </div>
+
       <ToyResults toys={filteredToys} />
+      <ToyCTASection />
     </main>
   )
 }
-//<ToyCTASection />
 
 interface ToySearchPanelProps {
   query: string
@@ -100,13 +98,15 @@ const ToySearchPanel = ({
   onToggleTag,
 }: ToySearchPanelProps) => (
   <section className="toyspace-panel">
-    <div className="search-row">
+    <div className="search-input-row">
       <input
         type="search"
         value={query}
         onChange={(e) => onQueryChange(e.target.value)}
         placeholder="キーワードで検索（例: WebGL, AI, Rust）"
       />
+    </div>
+    <div className="filter-row">
       <select value={category} onChange={(e) => onCategoryChange(e.target.value as ToyCategory | 'all')}>
         {categoryOptions.map((option) => (
           <option key={option.value} value={option.value}>

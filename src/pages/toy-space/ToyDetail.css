@@ -41,34 +41,21 @@
   gap: 10px;
 }
 
-.toy-template {
-  background: rgba(7, 8, 18, 0.9);
+.toy-content {
+  margin-top: 32px;
+  padding: 24px;
+  border-radius: 20px;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 24px;
-  padding: 28px;
-  margin-bottom: 32px;
+  background: rgba(7, 8, 18, 0.85);
 }
 
-.template-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 24px;
-  margin-top: 18px;
+.toy-content pre {
+  border-radius: 12px;
+  overflow-x: auto;
 }
 
-.toy-template ol,
-.toy-template ul {
-  margin: 0;
-  padding-left: 22px;
-  color: #d5d9f5;
-}
-
-.toy-outline article {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 18px;
-  padding: 20px;
-  margin-bottom: 18px;
+.toy-content code {
+  font-family: 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
 }
 
 .toy-related {

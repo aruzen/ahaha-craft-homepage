@@ -9,7 +9,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 32px;
-  margin-bottom: 32px;
+  margin-bottom: 1rem;
 }
 
 .toyspace-hero > div:first-child {
@@ -66,15 +66,27 @@
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
 }
 
-.search-row {
+.search-input-row {
+  margin-bottom: 16px;
+}
+
+.search-input-row input {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(4, 5, 14, 0.8);
+  color: #f7f8ff;
+  padding: 10px 14px;
+  width: 100%;
+}
+
+.filter-row {
   display: grid;
-  grid-template-columns: 1fr repeat(3, minmax(140px, 180px));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 12px;
   margin-bottom: 20px;
 }
 
-.search-row input,
-.search-row select {
+.filter-row select {
   border-radius: 14px;
   border: 1px solid rgba(255, 255, 255, 0.15);
   background: rgba(4, 5, 14, 0.8);
@@ -244,10 +256,6 @@
 }
 
 @media (max-width: 960px) {
-  .search-row {
-    grid-template-columns: 1fr;
-  }
-
   .toyspace-hero {
     flex-direction: column;
   }
