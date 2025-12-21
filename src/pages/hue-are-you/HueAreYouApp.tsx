@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { saveHueAreYouResult } from '../../api'
+import { saveHueAreYouResult, type SaveHueAreYouResultResponse } from '../../api'
 import StartScreen from './user/StartScreen'
 import SelectionScreen from './user/SelectionScreen'
 import ResultScreen from './user/ResultScreen'
@@ -21,7 +21,7 @@ const HueAreYouApp: React.FC = () => {
     setCurrentScreen('result')
   }
 
-  const handleSave = async (name: string) => {
+  const handleSave = async (name: string): Promise<SaveHueAreYouResultResponse> => {
     const normalizedName = name.trim() || '匿名'
     const hasAssignments = Object.keys(assignments).length > 0
 
@@ -31,14 +31,17 @@ const HueAreYouApp: React.FC = () => {
 
     setUserName(normalizedName)
 
-    await saveHueAreYouResult({
+    const response = await saveHueAreYouResult({
       name: normalizedName,
       choice: assignments,
     })
+
+    return response
   }
 
   const handleRestart = () => {
     setAssignments({})
+    setUserName('')
     setCurrentScreen('start')
   }
 

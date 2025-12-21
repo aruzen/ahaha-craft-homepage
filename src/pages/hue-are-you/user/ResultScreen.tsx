@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { ApiError } from '../../../api'
+import React, { useMemo, useState } from 'react'
+import { ApiError, type SaveHueAreYouResultResponse } from '../../../api'
 import ErrorNotice, { type ErrorDescriptor } from '../../../components/ErrorNotice'
 import { colorToHex } from '../../../data/colors'
 import './ResultScreen.css'
@@ -8,7 +8,7 @@ interface ResultScreenProps {
   assignments: Record<string, string>
   userName: string
   onRestart: () => void
-  onSave: (name: string) => Promise<void>
+  onSave: (name: string) => Promise<SaveHueAreYouResultResponse>
 }
 
 const ResultScreen: React.FC<ResultScreenProps> = ({ 
@@ -19,19 +19,14 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
 }) => {
   const [name, setName] = useState(userName)
   const [isSaving, setIsSaving] = useState(false)
-  const [isSaved, setIsSaved] = useState(false)
+  const [resultData, setResultData] = useState<SaveHueAreYouResultResponse | null>(null)
   const [errorNotice, setErrorNotice] = useState<ErrorDescriptor | null>(null)
 
   const handleSave = async () => {
-    if (!name.trim()) {
-      setErrorNotice({ message: '名前を入力してください', field: 'name' })
-      return
-    }
-    
     setIsSaving(true)
     try {
-      await onSave(name.trim())
-      setIsSaved(true)
+      const result = await onSave(name.trim())
+      setResultData(result)
       setErrorNotice(null)
     } catch (error) {
       if (error instanceof ApiError) {
@@ -53,6 +48,11 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
   }, {} as Record<string, string[]>)
 
   const totalWords = Object.keys(assignments).length
+  const hueColor = useMemo(() => {
+    if (!resultData) return ''
+    const { r, g, b } = resultData.hue
+    return `rgb(${r}, ${g}, ${b})`
+  }, [resultData])
 
   return (
     <div className="result-screen">
@@ -87,37 +87,40 @@ const ResultScreen: React.FC<ResultScreenProps> = ({
       </div>
 
       <div className="result-actions">
-        {!isSaved && (
-          <div className="save-section">
-            <div className="name-input-group">
-              <label htmlFor="name">名前（オプション）:</label>
-              <input
-                id="name"
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="匿名"
-                disabled={isSaving}
-              />
-            </div>
-            <button 
-              className="save-button"
-              onClick={handleSave}
+        <div className="save-section">
+          <div className="name-input-group">
+            <label htmlFor="name">名前（オプション）:</label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="匿名"
               disabled={isSaving}
-            >
-              {isSaving ? '保存中...' : '結果を保存'}
-            </button>
-            {errorNotice && (
-              <div className="save-error">
-                <ErrorNotice {...errorNotice} onDismiss={() => setErrorNotice(null)} />
-              </div>
-            )}
+            />
           </div>
-        )}
+          <button 
+            className="save-button"
+            onClick={handleSave}
+            disabled={isSaving}
+          >
+            {isSaving ? '取得中...' : '結果を見る'}
+          </button>
+          {errorNotice && (
+            <div className="save-error">
+              <ErrorNotice {...errorNotice} onDismiss={() => setErrorNotice(null)} />
+            </div>
+          )}
+        </div>
 
-        {isSaved && (
-          <div className="save-success">
-            ✓ 結果が保存されました
+        {resultData && (
+          <div className="result-detail">
+            <div className="result-color" style={{ backgroundColor: hueColor }} />
+            <div className="result-detail-body">
+              <div className="result-detail-label">あなたの今日の色は</div>
+              <div className="result-detail-code">{hueColor}</div>
+              <p className="result-detail-message">{resultData.message}</p>
+            </div>
           </div>
         )}
 

@@ -13,7 +13,7 @@ import (
 
 // HueSaveService は Hue 結果保存のユースケース境界。
 type HueSaveService interface {
-	SaveResult(ctx context.Context, record domain.HueRecord) error
+	SaveResult(ctx context.Context, record domain.HueRecord) (domain.HueResult, error)
 }
 
 // HueGetService は Hue データ取得のユースケース境界。
@@ -51,12 +51,15 @@ func (h *HueSaveHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.SaveResult(r.Context(), submission); err != nil {
+	result, err := h.service.SaveResult(r.Context(), submission)
+	if err != nil {
 		handleHueServiceError(w, err)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(api.NewSaveResultResponse(result))
 }
 
 type HueGetHandler struct {

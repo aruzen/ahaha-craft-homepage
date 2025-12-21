@@ -4,6 +4,7 @@ import type {
   FetchHueAreYouDataParams,
   HueAreYouDataResponse,
   SaveHueAreYouResultPayload,
+  SaveHueAreYouResultResponse,
   SessionResponce,
 } from './types'
 
@@ -169,8 +170,8 @@ export const signIn = async (
 export const saveHueAreYouResult = async (
   payload: SaveHueAreYouResultPayload,
   options?: { signal?: AbortSignal }
-): Promise<void> =>
-  request<void>('hue-are-you/save-result', {
+): Promise<SaveHueAreYouResultResponse> =>
+  request<SaveHueAreYouResultResponse>('hue-are-you/save-result', {
     method: 'POST',
     body: payload,
     signal: options?.signal,

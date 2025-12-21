@@ -20,4 +20,5 @@ var (
 	ErrDuplicateUsername   = errors.New("domain: duplicate username")
 	ErrDuplicateEmail      = errors.New("domain: duplicate email")
 	ErrInvalidAPIError     = errors.New("domain: invalid api error")
+	ErrInvalidHueResult    = errors.New("domain: invalid hue result")
 )

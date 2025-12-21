@@ -34,8 +34,28 @@ func (r SaveResultRequest) ToDomain() (domain.HueRecord, error) {
 	return record, nil
 }
 
-// SaveResultResponse は仕様上ボディ不要のため空。
-type SaveResultResponse struct{}
+type HuePayload struct {
+	R int `json:"r"`
+	G int `json:"g"`
+	B int `json:"b"`
+}
+
+func NewHuePayload(h domain.HueRGB) HuePayload {
+	return HuePayload{R: h.R(), G: h.G(), B: h.B()}
+}
+
+// SaveResultResponse は色とメッセージを返す。
+type SaveResultResponse struct {
+	Hue     HuePayload `json:"hue"`
+	Message string     `json:"message"`
+}
+
+func NewSaveResultResponse(result domain.HueResult) SaveResultResponse {
+	return SaveResultResponse{
+		Hue:     NewHuePayload(result.Hue()),
+		Message: result.Message(),
+	}
+}
 
 type GetDataRequest struct {
 	Session   SessionPayload `json:"session"`

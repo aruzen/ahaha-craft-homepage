@@ -3,6 +3,17 @@ export interface HueAreYouRecord {
   choice: Record<string, string>
 }
 
+export interface HueValue {
+  r: number
+  g: number
+  b: number
+}
+
+export interface HueAreYouResultResponse {
+  hue: HueValue
+  message: string
+}
+
 export type UserRole = 'admin' | 'user'
 
 export interface SessionData {
@@ -28,6 +39,7 @@ export interface SignInPayload {
 }
 
 export type SaveHueAreYouResultPayload = HueAreYouRecord
+export type SaveHueAreYouResultResponse = HueAreYouResultResponse
 
 export interface FetchHueAreYouDataParams {
   session: SessionData

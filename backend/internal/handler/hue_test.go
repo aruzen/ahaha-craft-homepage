@@ -17,8 +17,9 @@ import (
 
 func TestHueSaveHandler_ServeHTTP_Success(t *testing.T) {
 	record := buildHueRecord(t)
+	result := buildHueResult(t)
 
-	svc := &fakeHueSaveService{record: record}
+	svc := &fakeHueSaveService{record: record, result: result}
 	handler := NewHueSaveHandler(svc)
 
 	reqBody := marshal(t, api.SaveResultRequest{
@@ -38,6 +39,19 @@ func TestHueSaveHandler_ServeHTTP_Success(t *testing.T) {
 
 	if !svc.called {
 		t.Fatalf("service.SaveResult not called")
+	}
+
+	if contentType := res.Header().Get("Content-Type"); contentType != contentTypeJSON {
+		t.Fatalf("expected %s, got %s", contentTypeJSON, contentType)
+	}
+
+	var body api.SaveResultResponse
+	if err := json.NewDecoder(res.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	if body.Message != result.Message() || body.Hue.R != result.Hue().R() {
+		t.Fatalf("unexpected response body: %+v", body)
 	}
 }
 
@@ -103,7 +117,7 @@ func TestHueGetHandler_ServeHTTP_Success(t *testing.T) {
 	svc := &fakeHueGetService{records: []domain.HueRecord{record}}
 	handler := NewHueGetHandler(svc)
 
-	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
 		Session:   api.NewSessionPayload(session),
 		DataRange: []int{0, 0},
 	})))
@@ -131,7 +145,7 @@ func TestHueGetHandler_ServeHTTP_Success(t *testing.T) {
 
 func TestHueGetHandler_InvalidJSON(t *testing.T) {
 	handler := NewHueGetHandler(&fakeHueGetService{})
-	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", strings.NewReader(`{"session":1}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", strings.NewReader(`{"session":1}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -143,7 +157,7 @@ func TestHueGetHandler_InvalidJSON(t *testing.T) {
 
 func TestHueGetHandler_InvalidDomain(t *testing.T) {
 	handler := NewHueGetHandler(&fakeHueGetService{})
-	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", strings.NewReader(`{"session":{"user_id":"bad","token":""},"data-range":[0,0]}`))
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", strings.NewReader(`{"session":{"user_id":"bad","token":""},"data-range":[0,0]}`))
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -158,7 +172,7 @@ func TestHueGetHandler_Unauthorized(t *testing.T) {
 	handler := NewHueGetHandler(svc)
 	token, _ := domain.NewLoginSessionToken()
 	session, _ := domain.NewSessionData(uuid.New(), token)
-	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
 		Session:   api.NewSessionPayload(session),
 		DataRange: []int{0, 0},
 	})))
@@ -176,7 +190,7 @@ func TestHueGetHandler_InternalError(t *testing.T) {
 	handler := NewHueGetHandler(svc)
 	token, _ := domain.NewLoginSessionToken()
 	session, _ := domain.NewSessionData(uuid.New(), token)
-	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
+	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", strings.NewReader(marshal(t, api.GetDataRequest{
 		Session:   api.NewSessionPayload(session),
 		DataRange: []int{0, 0},
 	})))
@@ -191,7 +205,7 @@ func TestHueGetHandler_InternalError(t *testing.T) {
 
 func TestHueGetHandler_MethodNotAllowed(t *testing.T) {
 	handler := NewHueGetHandler(&fakeHueGetService{})
-	req := httptest.NewRequest(http.MethodPost, "/api/hue/get", nil)
+	req := httptest.NewRequest(http.MethodGet, "/api/hue/get", nil)
 	res := httptest.NewRecorder()
 
 	handler.ServeHTTP(res, req)
@@ -203,17 +217,18 @@ func TestHueGetHandler_MethodNotAllowed(t *testing.T) {
 
 type fakeHueSaveService struct {
 	record domain.HueRecord
+	result domain.HueResult
 	err    error
 	called bool
 }
 
-func (f *fakeHueSaveService) SaveResult(_ context.Context, record domain.HueRecord) error {
+func (f *fakeHueSaveService) SaveResult(_ context.Context, record domain.HueRecord) (domain.HueResult, error) {
 	f.called = true
 	f.record = record
 	if f.err != nil {
-		return f.err
+		return domain.HueResult{}, f.err
 	}
-	return nil
+	return f.result, nil
 }
 
 type fakeHueGetService struct {
@@ -252,6 +267,19 @@ func buildHueRecord(t *testing.T) domain.HueRecord {
 		t.Fatalf("record error: %v", err)
 	}
 	return record
+}
+
+func buildHueResult(t *testing.T) domain.HueResult {
+	t.Helper()
+	hue, err := domain.NewHueRGB(10, 20, 30)
+	if err != nil {
+		t.Fatalf("hue error: %v", err)
+	}
+	result, err := domain.NewHueResult(hue, "ok")
+	if err != nil {
+		t.Fatalf("result error: %v", err)
+	}
+	return result
 }
 
 func buildName(t *testing.T, value string) domain.Name {
