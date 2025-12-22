@@ -14,16 +14,40 @@ import (
 	"strings"
 )
 
-type HueSaveService struct {
-	hueRepo *repository.HueRepository
-	logger  *log.Logger
+type HueSaveConfig struct {
+	Endpoint     string
+	APIKey       string
+	SystemPrompt string
 }
 
-func NewHueSaveService(hueRepo *repository.HueRepository, logger *log.Logger) *HueSaveService {
+type HueSaveService struct {
+	hueRepo      *repository.HueRepository
+	logger       *log.Logger
+	endpoint     string
+	apiKey       string
+	systemPrompt string
+}
+
+func NewHueSaveService(hueRepo *repository.HueRepository, logger *log.Logger, cfg HueSaveConfig) (*HueSaveService, error) {
 	if logger == nil {
 		logger = log.Default()
 	}
-	return &HueSaveService{hueRepo: hueRepo, logger: logger}
+	if strings.TrimSpace(cfg.Endpoint) == "" {
+		return nil, errors.New("HueSaveService: endpoint is required")
+	}
+	if strings.TrimSpace(cfg.APIKey) == "" {
+		return nil, errors.New("HueSaveService: api key is required")
+	}
+	if strings.TrimSpace(cfg.SystemPrompt) == "" {
+		return nil, errors.New("HueSaveService: system prompt is required")
+	}
+	return &HueSaveService{
+		hueRepo:      hueRepo,
+		logger:       logger,
+		endpoint:     cfg.Endpoint,
+		apiKey:       cfg.APIKey,
+		systemPrompt: cfg.SystemPrompt,
+	}, nil
 }
 
 func (s *HueSaveService) SaveResult(ctx context.Context, record domain.HueRecord) (domain.HueResult, error) {
@@ -32,16 +56,7 @@ func (s *HueSaveService) SaveResult(ctx context.Context, record domain.HueRecord
 		return domain.HueResult{}, err
 	}
 
-	const endpoint = "https://api.openai.com/v1/responses"
-	const apiKey = "dummy-api-key"
-
-	system := strings.Replace(`
-あなたは心理テスト「Hue Are You」の結果生成AIです。
-与えられた人名と、各ワードに対して選択された色から
-心理的特徴を分析し、
-最終的なrgb値（0〜255）と、
-2〜4文程度の日本語メッセージを返してください。
-	`, "\n", "", -1)
+	system := strings.ReplaceAll(s.systemPrompt, "\n", "")
 
 	user := ""
 	for k, v := range record.Choices().ToMap() {
@@ -100,9 +115,9 @@ func (s *HueSaveService) SaveResult(ctx context.Context, record domain.HueRecord
 		return domain.HueResult{}, err
 	}
 
-	req, _ := http.NewRequest("POST", endpoint, bytes.NewBuffer(b))
+	req, _ := http.NewRequest("POST", s.endpoint, bytes.NewBuffer(b))
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("Authorization", "Bearer "+s.apiKey)
 
 	res, _ := http.DefaultClient.Do(req)
 	defer res.Body.Close()
@@ -147,7 +162,7 @@ func (s *HueSaveService) SaveResult(ctx context.Context, record domain.HueRecord
 		return domain.HueResult{}, err
 	}
 
-	result, err := domain.NewHueResult(hue, "saved")
+	result, err := domain.NewHueResult(hue, answer.Message)
 	if err != nil {
 		return domain.HueResult{}, err
 	}
