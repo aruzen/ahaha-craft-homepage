@@ -6,6 +6,15 @@
   flex-direction: column;
 }
 
+#main-content {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .App {
   width: 100%;
   flex: 1;
@@ -186,15 +195,6 @@
 
 .logout-btn:hover {
   background: rgba(255, 107, 107, 0.3);
-}
-
-.home main {
-  flex: 1;
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 2rem;
-  width: 100%;
-  box-sizing: border-box;
 }
 
 section {

@@ -21,8 +21,8 @@ const buttonGroupStyle: CSSProperties = {
 
 const Home = () => {
   return (
-    <main>
-      <section id="home">
+    <main id='main-content'>
+      <section>
         <h2>Welcome</h2>
         <p>このサイトは現在開発中です。</p>
         <div style={buttonGroupStyle}>

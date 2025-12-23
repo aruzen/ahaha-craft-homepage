@@ -1,8 +1,5 @@
 import type { ToyEntry, ToyTag } from '../types/toy'
 import { colorToHex } from './colors'
-import { hueVisualizer } from './toys/entries/hueVisualizer'
-import { rustGoGateway } from './toys/entries/rustGoGateway'
-import { promptHub } from './toys/entries/promptHub'
 
 export const toyTags: ToyTag[] = [
   { id: 'react', label: 'React', color: colorToHex['青'] },
@@ -13,4 +10,4 @@ export const toyTags: ToyTag[] = [
   { id: 'tooling', label: 'Tooling', color: colorToHex['緑'] },
 ]
 
-export const toyEntries: ToyEntry[] = [hueVisualizer, rustGoGateway, promptHub]
+export const toyEntries: ToyEntry[] = []
