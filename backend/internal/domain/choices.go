@@ -1,6 +1,9 @@
 package domain
 
-import "strings"
+import (
+	"log/slog"
+	"strings"
+)
 
 type HueWord string
 
@@ -30,7 +33,6 @@ type HueChoices struct {
 	values map[HueWord]HueColor
 }
 
-// NewHueChoices 空が含まれていれば ErrInvalidChoice を返す。
 func NewHueChoices(raw map[string]string) (HueChoices, error) {
 	if len(raw) == 0 {
 		return HueChoices{}, ErrInvalidChoice
@@ -41,9 +43,9 @@ func NewHueChoices(raw map[string]string) (HueChoices, error) {
 		w := HueWord(strings.TrimSpace(word))
 		c := HueColor(strings.TrimSpace(color))
 		if w == "" || c == "" || !c.valid() {
-			return HueChoices{}, ErrInvalidChoice
+			slog.Warn("Invalid hue choice value", "value", color, "word", word)
+			continue
 		}
-
 		values[w] = c
 	}
 
