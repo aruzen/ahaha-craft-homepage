@@ -321,6 +321,14 @@
   align-items: center;
 }
 
+.doc-default-published {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #cfd8ff;
+  font-size: 0.85rem;
+}
+
 @media (max-width: 960px) {
   .admin-dashboard {
     flex-direction: column;

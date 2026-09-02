@@ -306,6 +306,9 @@ export const rescanDocVault = async (
     signal: options?.signal,
   })
 
+export const setDocDefaultPublished = async (session: SessionData, vaultSlug: string, defaultPublished: boolean): Promise<void> =>
+  request<void>(`docs/admin/vaults/${vaultSlug}/settings`, { method: 'POST', body: { session, default_published: defaultPublished } })
+
 export const disableDocVault = async (
   session: SessionData,
   vaultSlug: string,

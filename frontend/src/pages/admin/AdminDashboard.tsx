@@ -12,6 +12,7 @@ import {
   syncDocVault,
 	 trashUploadedDoc,
 	 restoreUploadedDoc,
+	 setDocDefaultPublished,
 	 updateAdminDocMetadata,
 	 uploadDocContent,
 	 type DocNote,
@@ -323,6 +324,13 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
     }
   }
 
+	const updateDefaultPublished = async (vault: DocVault, value: boolean) => {
+		setIsLoading(true); setError(null); setMessage(null)
+		try { await setDocDefaultPublished(session, vault.slug, value); setMessage(`${vault.slug} の公開既定値を更新しました`); await loadDocsAdminData(); if (selectedSource?.slug === vault.slug) await loadNotes({ ...vault, default_published: value }) }
+		catch (err) { setError(err instanceof ApiError ? { message: err.message } : { message: '公開既定値の更新に失敗しました' }) }
+		finally { setIsLoading(false) }
+	}
+
 	const loadNotes = async (source: DocVault) => {
 		setIsLoading(true); setError(null)
 		try { const response = await fetchAdminDocNotes(session, source.slug); setSelectedSource(source); setNotes(response.notes ?? []) }
@@ -412,6 +420,7 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
               <span>status: {vault.status}</span>
 						<span>type: {vault.source_type}</span>
               {vault.last_synced_at && <span>synced: {new Date(vault.last_synced_at).toLocaleString()}</span>}
+						<label className="doc-default-published"><input type="checkbox" checked={Boolean(vault.default_published)} onChange={(e) => updateDefaultPublished(vault, e.target.checked)} disabled={isLoading} />published未指定を公開</label>
             </div>
             <div className="doc-vault-actions">
 						<button type="button" onClick={() => loadNotes(vault)} disabled={isLoading}>ノート管理</button>

@@ -58,6 +58,7 @@ export interface DocVault {
   status?: string
   last_synced_at?: string
 	 source_type: 'git_vault' | 'local_upload'
+	default_published?: boolean
 }
 
 export interface DocTag {
