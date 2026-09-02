@@ -9,6 +9,26 @@ type DocVault struct {
 	LocalPath    string
 	Status       string
 	LastSyncedAt *time.Time
+	SourceType   string
+}
+
+const (
+	DocSourceGitVault    = "git_vault"
+	DocSourceLocalUpload = "local_upload"
+)
+
+type DocToy struct {
+	Vault DocVault
+	Note  DocNote
+}
+
+type DocNoteOverride struct {
+	Title     *string
+	Summary   *string
+	Published *bool
+	Order     *int
+	Group     *string
+	Tags      *[]DocTag
 }
 
 type DocNote struct {

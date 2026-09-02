@@ -3,11 +3,13 @@ package repository
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
 	"backend/internal/domain"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,7 +23,7 @@ func NewDocRepository(db *pgxpool.Pool) *DocRepository {
 
 func (r *DocRepository) ListVaults(ctx context.Context, publicOnly bool) ([]domain.DocVault, error) {
 	query := `
-		SELECT slug, title, branch, local_path, status, last_synced_at
+		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type
 		FROM doc_vaults
 	`
 	if publicOnly {
@@ -48,7 +50,7 @@ func (r *DocRepository) ListVaults(ctx context.Context, publicOnly bool) ([]doma
 
 func (r *DocRepository) GetVault(ctx context.Context, slug string) (domain.DocVault, error) {
 	row := r.db.QueryRow(ctx, `
-		SELECT slug, title, branch, local_path, status, last_synced_at
+		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type
 		FROM doc_vaults
 		WHERE slug = $1
 	`, slug)
@@ -57,15 +59,16 @@ func (r *DocRepository) GetVault(ctx context.Context, slug string) (domain.DocVa
 
 func (r *DocRepository) UpsertVault(ctx context.Context, vault domain.DocVault) error {
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO doc_vaults (slug, title, branch, local_path, status, updated_at)
-		VALUES ($1, $2, $3, $4, $5, NOW())
+		INSERT INTO doc_vaults (slug, title, branch, local_path, status, source_type, updated_at)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NOW())
 		ON CONFLICT (slug) DO UPDATE SET
 			title = EXCLUDED.title,
 			branch = EXCLUDED.branch,
 			local_path = EXCLUDED.local_path,
 			status = EXCLUDED.status,
+			source_type = EXCLUDED.source_type,
 			updated_at = NOW()
-	`, vault.Slug, vault.Title, vault.Branch, vault.LocalPath, vault.Status)
+	`, vault.Slug, vault.Title, vault.Branch, vault.LocalPath, vault.Status, vault.SourceType)
 	return err
 }
 
@@ -108,6 +111,10 @@ func (r *DocRepository) ReplaceScan(ctx context.Context, vaultSlug string, notes
 	}
 
 	for _, note := range notes {
+		note, err = applyNoteOverride(ctx, tx, vaultSlug, note)
+		if err != nil {
+			return err
+		}
 		metadataJSON, err := json.Marshal(note.Metadata)
 		if err != nil {
 			return err
@@ -147,6 +154,132 @@ func (r *DocRepository) ReplaceScan(ctx context.Context, vaultSlug string, notes
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (r *DocRepository) ListPublishedToys(ctx context.Context) ([]domain.DocToy, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT v.slug, v.title, COALESCE(v.branch, ''), v.local_path, v.status, v.last_synced_at, v.source_type,
+		       n.vault_slug, n.slug, n.title, n.summary, n.source_path, n.content_type, n.published,
+		       n.display_order, n.note_group, n.metadata, n.updated_at
+		FROM doc_notes n
+		JOIN doc_vaults v ON v.slug = n.vault_slug
+		WHERE v.status = 'active' AND n.published = true
+		ORDER BY n.updated_at DESC, n.display_order, n.title
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var toys []domain.DocToy
+	for rows.Next() {
+		var toy domain.DocToy
+		var lastSynced *time.Time
+		var metadataJSON []byte
+		if err := rows.Scan(
+			&toy.Vault.Slug, &toy.Vault.Title, &toy.Vault.Branch, &toy.Vault.LocalPath, &toy.Vault.Status, &lastSynced, &toy.Vault.SourceType,
+			&toy.Note.VaultSlug, &toy.Note.Slug, &toy.Note.Title, &toy.Note.Summary, &toy.Note.SourcePath,
+			&toy.Note.ContentType, &toy.Note.Published, &toy.Note.Order, &toy.Note.Group, &metadataJSON, &toy.Note.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		toy.Vault.LastSyncedAt = lastSynced
+		if len(metadataJSON) > 0 {
+			if err := json.Unmarshal(metadataJSON, &toy.Note.Metadata); err != nil {
+				return nil, err
+			}
+		}
+		toys = append(toys, toy)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	tagRows, err := r.db.Query(ctx, `
+		SELECT nt.vault_slug, nt.note_slug, t.slug, t.name
+		FROM doc_note_tags nt JOIN doc_tags t
+		  ON t.vault_slug = nt.vault_slug AND t.slug = nt.tag_slug
+		JOIN doc_notes n ON n.vault_slug = nt.vault_slug AND n.slug = nt.note_slug
+		JOIN doc_vaults v ON v.slug = n.vault_slug
+		WHERE v.status = 'active' AND n.published = true
+		ORDER BY t.name
+	`)
+	if err != nil {
+		return nil, err
+	}
+	defer tagRows.Close()
+	tags := map[string][]domain.DocTag{}
+	for tagRows.Next() {
+		var vaultSlug, noteSlug string
+		var tag domain.DocTag
+		if err := tagRows.Scan(&vaultSlug, &noteSlug, &tag.Slug, &tag.Name); err != nil {
+			return nil, err
+		}
+		key := vaultSlug + "\x00" + noteSlug
+		tags[key] = append(tags[key], tag)
+	}
+	for i := range toys {
+		toys[i].Note.Tags = tags[toys[i].Note.VaultSlug+"\x00"+toys[i].Note.Slug]
+	}
+	return toys, tagRows.Err()
+}
+
+func (r *DocRepository) UpsertNoteOverride(ctx context.Context, vaultSlug, noteSlug string, override domain.DocNoteOverride) error {
+	var tagsJSON *string
+	if override.Tags != nil {
+		encoded, err := json.Marshal(*override.Tags)
+		if err != nil {
+			return err
+		}
+		value := string(encoded)
+		tagsJSON = &value
+	}
+	_, err := r.db.Exec(ctx, `
+		INSERT INTO doc_note_overrides
+			(vault_slug, note_slug, title, summary, published, display_order, note_group, tags, updated_at)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW())
+		ON CONFLICT (vault_slug, note_slug) DO UPDATE SET
+			title=EXCLUDED.title, summary=EXCLUDED.summary, published=EXCLUDED.published,
+			display_order=EXCLUDED.display_order, note_group=EXCLUDED.note_group,
+			tags=EXCLUDED.tags, updated_at=NOW()
+	`, vaultSlug, noteSlug, override.Title, override.Summary, override.Published, override.Order, override.Group, tagsJSON)
+	return err
+}
+
+func applyNoteOverride(ctx context.Context, tx pgx.Tx, vaultSlug string, note domain.DocNote) (domain.DocNote, error) {
+	var title, summary, group *string
+	var published *bool
+	var order *int
+	var tagsJSON []byte
+	err := tx.QueryRow(ctx, `SELECT title, summary, published, display_order, note_group, tags
+		FROM doc_note_overrides WHERE vault_slug=$1 AND note_slug=$2`, vaultSlug, note.Slug).
+		Scan(&title, &summary, &published, &order, &group, &tagsJSON)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return note, nil
+	}
+	if err != nil {
+		return note, err
+	}
+	if title != nil {
+		note.Title = *title
+	}
+	if summary != nil {
+		note.Summary = *summary
+	}
+	if published != nil {
+		note.Published = *published
+	}
+	if order != nil {
+		note.Order = *order
+	}
+	if group != nil {
+		note.Group = *group
+	}
+	if tagsJSON != nil {
+		if err := json.Unmarshal(tagsJSON, &note.Tags); err != nil {
+			return note, err
+		}
+	}
+	return note, nil
 }
 
 func (r *DocRepository) ListNotes(ctx context.Context, vaultSlug, tag, group string, publicOnly bool) ([]domain.DocNote, error) {
@@ -257,7 +390,7 @@ type docRowScanner interface {
 func scanDocVault(row docRowScanner) (domain.DocVault, error) {
 	var vault domain.DocVault
 	var lastSyncedAt *time.Time
-	err := row.Scan(&vault.Slug, &vault.Title, &vault.Branch, &vault.LocalPath, &vault.Status, &lastSyncedAt)
+	err := row.Scan(&vault.Slug, &vault.Title, &vault.Branch, &vault.LocalPath, &vault.Status, &lastSyncedAt, &vault.SourceType)
 	vault.LastSyncedAt = lastSyncedAt
 	return vault, err
 }

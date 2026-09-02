@@ -34,18 +34,21 @@ var (
 )
 
 type DocService struct {
-	repo        *repository.DocRepository
-	sessionRepo *repository.LoginSessionRepository
-	userRepo    *repository.UserRepository
-	logger      *log.Logger
-	repoPath    string
-	contentRoot string
-	cache       *docContentCache
+	repo           *repository.DocRepository
+	sessionRepo    *repository.LoginSessionRepository
+	userRepo       *repository.UserRepository
+	logger         *log.Logger
+	repoPath       string
+	contentRoot    string
+	cache          *docContentCache
+	backupRepoPath string
+	writeMu        sync.Mutex
 }
 
 type DocServiceConfig struct {
-	RepoPath    string
-	ContentRoot string
+	RepoPath       string
+	ContentRoot    string
+	BackupRepoPath string
 }
 
 func NewDocService(docRepo *repository.DocRepository, sessionRepo *repository.LoginSessionRepository, userRepo *repository.UserRepository, logger *log.Logger, cfg DocServiceConfig) *DocService {
@@ -57,18 +60,23 @@ func NewDocService(docRepo *repository.DocRepository, sessionRepo *repository.Lo
 		contentRoot = filepath.Join("data", "docs", "vaults")
 	}
 	return &DocService{
-		repo:        docRepo,
-		sessionRepo: sessionRepo,
-		userRepo:    userRepo,
-		logger:      logger,
-		repoPath:    strings.TrimSpace(cfg.RepoPath),
-		contentRoot: contentRoot,
-		cache:       newDocContentCache(),
+		repo:           docRepo,
+		sessionRepo:    sessionRepo,
+		userRepo:       userRepo,
+		logger:         logger,
+		repoPath:       strings.TrimSpace(cfg.RepoPath),
+		contentRoot:    contentRoot,
+		cache:          newDocContentCache(),
+		backupRepoPath: strings.TrimSpace(cfg.BackupRepoPath),
 	}
 }
 
 func (s *DocService) ListVaults(ctx context.Context) ([]domain.DocVault, error) {
 	return s.repo.ListVaults(ctx, true)
+}
+
+func (s *DocService) ListToys(ctx context.Context) ([]domain.DocToy, error) {
+	return s.repo.ListPublishedToys(ctx)
 }
 
 func (s *DocService) ListNotes(ctx context.Context, vaultSlug, tag, group string) ([]domain.DocNote, error) {
@@ -112,9 +120,7 @@ func (s *DocService) ReadNoteContent(ctx context.Context, vaultSlug, noteSlug st
 		}
 		return nil, "", err
 	}
-	if note.ContentType == "markdown" {
-		content = []byte(stripFrontmatter(string(content)))
-	}
+	content = []byte(stripFrontmatter(string(content)))
 	return content, contentMime(note.SourcePath), nil
 }
 
@@ -173,6 +179,39 @@ func (s *DocService) AdminListVaults(ctx context.Context, session domain.Session
 	return s.repo.ListVaults(ctx, false)
 }
 
+func (s *DocService) AdminListNotes(ctx context.Context, session domain.SessionData, vaultSlug string) ([]domain.DocNote, error) {
+	if err := s.requireAdmin(ctx, session); err != nil {
+		return nil, err
+	}
+	if !validSlug(vaultSlug) {
+		return nil, ErrDocInvalidInput
+	}
+	return s.repo.ListNotes(ctx, vaultSlug, "", "", false)
+}
+
+func (s *DocService) AdminUpdateNoteMetadata(ctx context.Context, session domain.SessionData, vaultSlug, noteSlug string, override domain.DocNoteOverride) error {
+	if err := s.requireAdmin(ctx, session); err != nil {
+		return err
+	}
+	if !validSlug(vaultSlug) || !validSlug(noteSlug) {
+		return ErrDocInvalidInput
+	}
+	vault, err := s.repo.GetVault(ctx, vaultSlug)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ErrDocNotFound
+	}
+	if err != nil {
+		return err
+	}
+	if vault.SourceType == domain.DocSourceLocalUpload {
+		return s.updateLocalNoteMetadata(ctx, vault, noteSlug, override)
+	}
+	if err := s.repo.UpsertNoteOverride(ctx, vaultSlug, noteSlug, override); err != nil {
+		return err
+	}
+	return s.RescanVault(ctx, vault)
+}
+
 func (s *DocService) AdminRegisterVault(ctx context.Context, session domain.SessionData, branch, slug, title string) (domain.DocVault, error) {
 	if err := s.requireAdmin(ctx, session); err != nil {
 		return domain.DocVault{}, err
@@ -194,11 +233,12 @@ func (s *DocService) AdminRegisterVault(ctx context.Context, session domain.Sess
 		return domain.DocVault{}, err
 	}
 	vault := domain.DocVault{
-		Slug:      slug,
-		Title:     title,
-		Branch:    branch,
-		LocalPath: localPath,
-		Status:    "active",
+		Slug:       slug,
+		Title:      title,
+		Branch:     branch,
+		LocalPath:  localPath,
+		Status:     "active",
+		SourceType: domain.DocSourceGitVault,
 	}
 	if err := s.repo.UpsertVault(ctx, vault); err != nil {
 		return domain.DocVault{}, err
@@ -257,17 +297,11 @@ func (s *DocService) AdminRescanVault(ctx context.Context, session domain.Sessio
 }
 
 func (s *DocService) AdminOverrideNotePublished(ctx context.Context, session domain.SessionData, vaultSlug, noteSlug string, published bool) error {
-	if err := s.requireAdmin(ctx, session); err != nil {
-		return err
-	}
-	if !validSlug(vaultSlug) || !validSlug(noteSlug) {
-		return ErrDocInvalidInput
-	}
-	s.cache.InvalidateVault(vaultSlug)
-	return s.repo.OverrideNotePublished(ctx, vaultSlug, noteSlug, published)
+	return s.AdminUpdateNoteMetadata(ctx, session, vaultSlug, noteSlug, domain.DocNoteOverride{Published: &published})
 }
 
 func (s *DocService) RescanVault(ctx context.Context, vault domain.DocVault) error {
+	s.cache.InvalidateVault(vault.Slug)
 	notes, assets, err := scanDocVault(vault)
 	if err != nil {
 		return err
@@ -382,7 +416,7 @@ func scanDocVault(vault domain.DocVault) ([]domain.DocNote, []domain.DocAsset, e
 		}
 		switch {
 		case isNoteFile(rel):
-			note, err := scanDocNoteFile(vault.Slug, rel, fullPath, info.ModTime())
+			note, err := scanDocNoteFile(vault, rel, fullPath, info.ModTime())
 			if err != nil {
 				return err
 			}
@@ -401,7 +435,7 @@ func scanDocVault(vault domain.DocVault) ([]domain.DocNote, []domain.DocAsset, e
 	return notes, assets, err
 }
 
-func scanDocNoteFile(vaultSlug, relPath, fullPath string, updatedAt time.Time) (domain.DocNote, error) {
+func scanDocNoteFile(vault domain.DocVault, relPath, fullPath string, updatedAt time.Time) (domain.DocNote, error) {
 	raw, err := os.ReadFile(fullPath)
 	if err != nil {
 		return domain.DocNote{}, err
@@ -412,7 +446,7 @@ func scanDocNoteFile(vaultSlug, relPath, fullPath string, updatedAt time.Time) (
 		title = strings.TrimSuffix(filepath.Base(relPath), filepath.Ext(relPath))
 	}
 	note := domain.DocNote{
-		VaultSlug:   vaultSlug,
+		VaultSlug:   vault.Slug,
 		Slug:        docSlugFromPath(relPath),
 		Title:       title,
 		Summary:     meta.String("summary"),
@@ -426,9 +460,14 @@ func scanDocNoteFile(vaultSlug, relPath, fullPath string, updatedAt time.Time) (
 		UpdatedAt:   updatedAt.UTC(),
 	}
 	if note.Group == "" {
-		group := filepath.Dir(relPath)
-		if group != "." {
-			note.Group = filepath.ToSlash(group)
+		group := filepath.ToSlash(filepath.Dir(relPath))
+		if vault.SourceType == domain.DocSourceLocalUpload {
+			parts := strings.Split(group, "/")
+			if len(parts) >= 2 && parts[0] == "books" {
+				note.Group = parts[1]
+			}
+		} else if group != "." {
+			note.Group = group
 		}
 	}
 	return note, nil

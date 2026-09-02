@@ -1,6 +1,8 @@
 package service
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"os"
 	"os/exec"
@@ -9,6 +11,34 @@ import (
 
 	"backend/internal/domain"
 )
+
+func TestExtractDocArchive(t *testing.T) {
+	var data bytes.Buffer
+	zw := zip.NewWriter(&data)
+	file, _ := zw.Create("chapters/01.md")
+	_, _ = file.Write([]byte("---\npublished: true\n---\nchapter"))
+	image, _ := zw.Create("images/cover.png")
+	_, _ = image.Write([]byte("png"))
+	_ = zw.Close()
+	target := filepath.Join(t.TempDir(), "book")
+	if err := extractDocArchive(data.Bytes(), target); err != nil {
+		t.Fatalf("extract: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(target, "chapters", "01.md")); err != nil {
+		t.Fatalf("chapter missing: %v", err)
+	}
+}
+
+func TestExtractDocArchiveRejectsTraversal(t *testing.T) {
+	var data bytes.Buffer
+	zw := zip.NewWriter(&data)
+	file, _ := zw.Create("../escape.md")
+	_, _ = file.Write([]byte("escape"))
+	_ = zw.Close()
+	if err := extractDocArchive(data.Bytes(), t.TempDir()); err == nil {
+		t.Fatal("expected traversal rejection")
+	}
+}
 
 func TestScanDocVaultFrontmatterAssetsAndObsidianReferences(t *testing.T) {
 	root := t.TempDir()
@@ -76,6 +106,27 @@ func TestSafeJoinRejectsTraversal(t *testing.T) {
 	}
 	if _, err := safeJoin(root, "docs/note.md"); err != nil {
 		t.Fatalf("expected safe path, got %v", err)
+	}
+}
+
+func TestScanLocalUploadsSeparatesNotesAndBooks(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "notes", "single.md"), "---\npublished: true\n---\nsingle")
+	writeTestFile(t, filepath.Join(root, "books", "guide", "chapters", "one.md"), "---\npublished: true\n---\none")
+	vault := domain.DocVault{Slug: "uploads", LocalPath: root, SourceType: domain.DocSourceLocalUpload}
+	notes, _, err := scanDocVault(vault)
+	if err != nil {
+		t.Fatal(err)
+	}
+	groups := map[string]string{}
+	for _, note := range notes {
+		groups[note.Title] = note.Group
+	}
+	if groups["single"] != "" {
+		t.Fatalf("single note grouped as %q", groups["single"])
+	}
+	if groups["one"] != "guide" {
+		t.Fatalf("book chapter group = %q", groups["one"])
 	}
 }
 

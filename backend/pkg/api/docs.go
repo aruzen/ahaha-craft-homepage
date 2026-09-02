@@ -2,6 +2,9 @@ package api
 
 import (
 	"backend/internal/domain"
+	"net/url"
+	"path"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -13,6 +16,7 @@ type DocVaultPayload struct {
 	LocalPath    string  `json:"local_path,omitempty"`
 	Status       string  `json:"status,omitempty"`
 	LastSyncedAt *string `json:"last_synced_at,omitempty"`
+	SourceType   string  `json:"source_type"`
 }
 
 type DocTagPayload struct {
@@ -33,17 +37,18 @@ type DocNoteMetadataPayload struct {
 }
 
 type DocNotePayload struct {
-	Slug        string                 `json:"slug"`
-	Title       string                 `json:"title"`
-	Summary     string                 `json:"summary"`
-	ContentType string                 `json:"content_type"`
-	Published   bool                   `json:"published,omitempty"`
-	Order       int                    `json:"order"`
-	Group       string                 `json:"group,omitempty"`
-	Tags        []DocTagPayload        `json:"tags"`
-	Metadata    DocNoteMetadataPayload `json:"metadata"`
-	UpdatedAt   string                 `json:"updated_at"`
-	ContentURL  string                 `json:"content_url"`
+	Slug         string                 `json:"slug"`
+	Title        string                 `json:"title"`
+	Summary      string                 `json:"summary"`
+	ContentType  string                 `json:"content_type"`
+	Published    bool                   `json:"published,omitempty"`
+	Order        int                    `json:"order"`
+	Group        string                 `json:"group,omitempty"`
+	Tags         []DocTagPayload        `json:"tags"`
+	Metadata     DocNoteMetadataPayload `json:"metadata"`
+	UpdatedAt    string                 `json:"updated_at"`
+	ContentURL   string                 `json:"content_url"`
+	AssetBaseURL string                 `json:"asset_base_url"`
 }
 
 type DocVaultsResponse struct {
@@ -52,6 +57,15 @@ type DocVaultsResponse struct {
 
 type DocNotesResponse struct {
 	Notes []DocNotePayload `json:"notes"`
+}
+
+type DocToyPayload struct {
+	Source DocVaultPayload `json:"source"`
+	Note   DocNotePayload  `json:"note"`
+}
+
+type DocToysResponse struct {
+	Toys []DocToyPayload `json:"toys"`
 }
 
 type DocBranchesResponse struct {
@@ -78,6 +92,16 @@ type DocOverridePublishedRequest struct {
 	Published bool              `json:"published"`
 }
 
+type DocUpdateMetadataRequest struct {
+	Session   DocSessionPayload `json:"session"`
+	Title     *string           `json:"title,omitempty"`
+	Summary   *string           `json:"summary,omitempty"`
+	Published *bool             `json:"published,omitempty"`
+	Order     *int              `json:"order,omitempty"`
+	Group     *string           `json:"group,omitempty"`
+	Tags      *[]string         `json:"tags,omitempty"`
+}
+
 type DocSessionPayload = SessionPayload
 
 func (p SessionPayload) ToDomain() (domain.SessionData, error) {
@@ -94,8 +118,7 @@ func (p SessionPayload) ToDomain() (domain.SessionData, error) {
 
 func NewDocVaultPayload(vault domain.DocVault, includeAdminFields bool) DocVaultPayload {
 	payload := DocVaultPayload{
-		Slug:  vault.Slug,
-		Title: vault.Title,
+		Slug: vault.Slug, Title: vault.Title, SourceType: vault.SourceType,
 	}
 	if includeAdminFields {
 		payload.Branch = vault.Branch
@@ -115,21 +138,35 @@ func NewDocNotePayload(note domain.DocNote, includeAdminFields bool) DocNotePayl
 		tags[i] = DocTagPayload{Slug: tag.Slug, Name: tag.Name}
 	}
 	payload := DocNotePayload{
-		Slug:        note.Slug,
-		Title:       note.Title,
-		Summary:     note.Summary,
-		ContentType: note.ContentType,
-		Order:       note.Order,
-		Group:       note.Group,
-		Tags:        tags,
-		Metadata:    newDocMetadataPayload(note.Metadata),
-		UpdatedAt:   note.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		ContentURL:  "/api/docs/content/" + note.VaultSlug + "/" + note.Slug,
+		Slug:         note.Slug,
+		Title:        note.Title,
+		Summary:      note.Summary,
+		ContentType:  note.ContentType,
+		Order:        note.Order,
+		Group:        note.Group,
+		Tags:         tags,
+		Metadata:     newDocMetadataPayload(note.Metadata),
+		UpdatedAt:    note.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ContentURL:   "/api/docs/content/" + note.VaultSlug + "/" + note.Slug,
+		AssetBaseURL: docAssetBaseURL(note),
 	}
 	if includeAdminFields {
 		payload.Published = note.Published
 	}
 	return payload
+}
+
+func docAssetBaseURL(note domain.DocNote) string {
+	dir := path.Dir(strings.ReplaceAll(note.SourcePath, "\\", "/"))
+	base := "/api/docs/assets/" + url.PathEscape(note.VaultSlug) + "/"
+	if dir == "." {
+		return base
+	}
+	parts := strings.Split(dir, "/")
+	for i := range parts {
+		parts[i] = url.PathEscape(parts[i])
+	}
+	return base + strings.Join(parts, "/") + "/"
 }
 
 func newDocMetadataPayload(metadata domain.DocNoteMetadata) DocNoteMetadataPayload {

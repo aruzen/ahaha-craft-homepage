@@ -129,8 +129,9 @@ func loadHueSaveConfig() (service.HueSaveConfig, error) {
 
 func loadDocConfig() service.DocServiceConfig {
 	return service.DocServiceConfig{
-		RepoPath:    strings.TrimSpace(os.Getenv("DOC_VAULT_REPO_PATH")),
-		ContentRoot: strings.TrimSpace(os.Getenv("DOC_CONTENT_ROOT")),
+		RepoPath:       strings.TrimSpace(os.Getenv("DOC_VAULT_REPO_PATH")),
+		ContentRoot:    strings.TrimSpace(os.Getenv("DOC_CONTENT_ROOT")),
+		BackupRepoPath: strings.TrimSpace(os.Getenv("DOC_UPLOAD_BACKUP_REPO_PATH")),
 	}
 }
 
