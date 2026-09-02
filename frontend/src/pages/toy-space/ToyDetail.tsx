@@ -2,10 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
 import rehypeHighlight from 'rehype-highlight'
+import rehypeKatex from 'rehype-katex'
 import remarkGfm from 'remark-gfm'
+import remarkMath from 'remark-math'
 import { ApiError, fetchDocContent, fetchDocNote, getDocAssetUrl, type DocNote, type DocReference } from '../../api'
 import './ToyDetail.css'
 import 'highlight.js/styles/github-dark.css'
+import 'katex/dist/katex.min.css'
 
 const ToyDetail = () => {
   const { vaultSlug = '', noteSlug = '' } = useParams()
@@ -68,8 +71,8 @@ const ToyDetail = () => {
             <iframe className="toy-html-frame" title={note.title} sandbox="allow-same-origin" srcDoc={html} />
           ) : (
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={[rehypeHighlight]}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeHighlight, rehypeKatex]}
               components={{
                 a: ({ href, children }) => {
                   const internal = href?.startsWith('/toy-space/')

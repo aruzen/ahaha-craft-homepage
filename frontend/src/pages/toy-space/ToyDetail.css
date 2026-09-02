@@ -58,6 +58,16 @@
   font-family: 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace;
 }
 
+.toy-content .katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 8px 0;
+}
+
+.toy-content .katex {
+  color: inherit;
+}
+
 .toy-content img {
   max-width: 100%;
   height: auto;
