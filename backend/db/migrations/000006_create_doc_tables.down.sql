@@ -1,0 +1,5 @@
+DROP TABLE IF EXISTS doc_assets;
+DROP TABLE IF EXISTS doc_note_tags;
+DROP TABLE IF EXISTS doc_tags;
+DROP TABLE IF EXISTS doc_notes;
+DROP TABLE IF EXISTS doc_vaults;

@@ -69,6 +69,7 @@ func newHTTPHandler(pool *pgxpool.Pool, logger *log.Logger) http.Handler {
 	userRepo := repository.NewUserRepository(pool)
 	sessionRepo := repository.NewLoginSessionRepository(pool)
 	hueRepo := repository.NewHueRepository(pool)
+	docRepo := repository.NewDocRepository(pool)
 
 	signInService := service.NewSignInService(userRepo, sessionRepo, logger)
 	loginService := service.NewLoginService(userRepo, sessionRepo, logger)
@@ -81,12 +82,15 @@ func newHTTPHandler(pool *pgxpool.Pool, logger *log.Logger) http.Handler {
 		logger.Fatalf("hue save service init error: %v", err)
 	}
 	hueGetService := service.NewHueGetService(hueRepo, sessionRepo, userRepo, logger)
+	docService := service.NewDocService(docRepo, sessionRepo, userRepo, logger, loadDocConfig())
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/sign-in", withCORS(handler.NewSignInHandler(signInService)))
 	mux.Handle("/api/login", withCORS(handler.NewLoginHandler(loginService)))
 	mux.Handle("/api/hue-are-you/save-result", withCORS(handler.NewHueSaveHandler(hueSaveService)))
 	mux.Handle("/api/hue-are-you/get-data", withCORS(handler.NewHueGetHandler(hueGetService)))
+	mux.Handle("/api/docs/", withCORS(handler.NewDocsHandler(docService)))
+	mux.Handle("/api/docs/vaults", withCORS(handler.NewDocsHandler(docService)))
 
 	return mux
 }
@@ -121,6 +125,13 @@ func loadHueSaveConfig() (service.HueSaveConfig, error) {
 メッセージは分析の結果を伝えるのではなくふんわりした内容で、いいサービスだったと思ってもらえる分にしましょう。
 `,
 	}, nil
+}
+
+func loadDocConfig() service.DocServiceConfig {
+	return service.DocServiceConfig{
+		RepoPath:    strings.TrimSpace(os.Getenv("DOC_VAULT_REPO_PATH")),
+		ContentRoot: strings.TrimSpace(os.Getenv("DOC_CONTENT_ROOT")),
+	}
 }
 
 func withCORS(next http.Handler) http.Handler {
