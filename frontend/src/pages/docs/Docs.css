@@ -152,6 +152,32 @@
   background: white;
 }
 
+.toy-doc-page {
+  background: #05060e;
+  color: #f1f3ff;
+}
+
+.toy-doc-page .docs-header h2,
+.toy-doc-page .docs-markdown h1,
+.toy-doc-page .docs-markdown h2,
+.toy-doc-page .docs-markdown h3 {
+  color: #f1f3ff;
+}
+
+.toy-doc-page .docs-header p,
+.toy-doc-page .docs-markdown {
+  color: #c6cbe4;
+}
+
+.toy-doc-page .docs-back {
+  color: #9ba7ff;
+}
+
+.toy-doc-page .docs-viewer {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(7, 8, 18, 0.85);
+}
+
 @media (max-width: 720px) {
   .docs-header {
     align-items: flex-start;

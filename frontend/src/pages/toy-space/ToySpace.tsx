@@ -1,20 +1,77 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { toyEntries, toyTags } from '../../data/toys'
-import { useToySpace } from '../../contexts/ToySpaceContext'
-import type { ToyCategory, ToyDifficulty } from '../../types/toy'
+import { ApiError, fetchDocNotes, fetchDocVaults, type DocNote, type DocVault } from '../../api'
 import './ToySpace.css'
 
+interface PublishedToy {
+  vault: DocVault
+  note: DocNote
+}
+
 const ToySpace = () => {
-  const {
-    criteria,
-    setQuery,
-    toggleTag,
-    setCategory,
-    setDifficulty,
-    setSortOrder,
-    filteredToys,
-    resetFilters,
-  } = useToySpace()
+  const [toys, setToys] = useState<PublishedToy[]>([])
+  const [query, setQuery] = useState('')
+  const [vaultSlug, setVaultSlug] = useState('all')
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [sortOrder, setSortOrder] = useState<'latest' | 'title'>('latest')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    setIsLoading(true)
+    fetchDocVaults({ signal: controller.signal })
+      .then(async ({ vaults }) => {
+        const notesByVault = await Promise.all(
+          (vaults ?? []).map(async (vault) => ({
+            vault,
+            notes: (await fetchDocNotes(vault.slug, undefined, { signal: controller.signal })).notes ?? [],
+          }))
+        )
+        setToys(notesByVault.flatMap(({ vault, notes }) => notes.map((note) => ({ vault, note }))))
+        setError(null)
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) {
+          setError(err instanceof ApiError ? err.message : 'Toyの取得に失敗しました')
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false)
+      })
+    return () => controller.abort()
+  }, [])
+
+  const vaults = useMemo(
+    () => Array.from(new Map(toys.map(({ vault }) => [vault.slug, vault])).values()),
+    [toys]
+  )
+  const tags = useMemo(
+    () => Array.from(new Map(toys.flatMap(({ note }) => note.tags.map((tag) => [tag.slug, tag]))).values()),
+    [toys]
+  )
+  const filteredToys = useMemo(() => {
+    const keyword = query.trim().toLowerCase()
+    return toys
+      .filter(({ vault, note }) => {
+        if (vaultSlug !== 'all' && vault.slug !== vaultSlug) return false
+        if (selectedTags.length > 0 && !selectedTags.every((tag) => note.tags.some(({ slug }) => slug === tag))) return false
+        if (!keyword) return true
+        return `${note.title} ${note.summary} ${note.group ?? ''} ${note.tags.map((tag) => tag.name).join(' ')}`
+          .toLowerCase()
+          .includes(keyword)
+      })
+      .sort((a, b) => sortOrder === 'latest'
+        ? b.note.updated_at.localeCompare(a.note.updated_at)
+        : a.note.title.localeCompare(b.note.title, 'ja'))
+  }, [query, selectedTags, sortOrder, toys, vaultSlug])
+
+  const resetFilters = () => {
+    setQuery('')
+    setVaultSlug('all')
+    setSelectedTags([])
+    setSortOrder('latest')
+  }
 
   return (
     <main className="toyspace">
@@ -25,193 +82,71 @@ const ToySpace = () => {
         </div>
       </section>
 
-      <ToySearchPanel
-        query={criteria.query}
-        onQueryChange={setQuery}
-        category={criteria.category}
-        onCategoryChange={setCategory}
-        difficulty={criteria.difficulty}
-        onDifficultyChange={setDifficulty}
-        sortOrder={criteria.sortOrder}
-        onSortOrderChange={setSortOrder}
-        selectedTags={criteria.selectedTagIds}
-        onToggleTag={toggleTag}
-      />
+      <section className="toyspace-panel">
+        <div className="search-input-row">
+          <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="キーワードで検索" />
+        </div>
+        <div className="filter-row">
+          <select value={vaultSlug} onChange={(e) => setVaultSlug(e.target.value)}>
+            <option value="all">すべてのVault</option>
+            {vaults.map((vault) => <option key={vault.slug} value={vault.slug}>{vault.title}</option>)}
+          </select>
+          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'latest' | 'title')}>
+            <option value="latest">最新順</option>
+            <option value="title">タイトル順</option>
+          </select>
+        </div>
+        {tags.length > 0 && (
+          <div className="tag-grid">
+            {tags.map((tag) => {
+              const active = selectedTags.includes(tag.slug)
+              return (
+                <button
+                  key={tag.slug}
+                  type="button"
+                  className={active ? 'tag-chip active' : 'tag-chip'}
+                  onClick={() => setSelectedTags((current) => active ? current.filter((slug) => slug !== tag.slug) : [...current, tag.slug])}
+                >
+                  {tag.name}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </section>
 
       <div className="toyspace-stats">
-        <div>
-          <span>現在の検索語</span>
-          <strong>{criteria.query || '（未入力）'}</strong>
-        </div>
-        <div>
-          <span>ヒット数</span>
-          <strong>{filteredToys.length}</strong>
-        </div>
-        <button type="button" onClick={resetFilters}>
-          条件をクリア
-        </button>
+        <div><span>現在の検索語</span><strong>{query || '（未入力）'}</strong></div>
+        <div><span>ヒット数</span><strong>{filteredToys.length}</strong></div>
+        <button type="button" onClick={resetFilters}>条件をクリア</button>
       </div>
 
-      <ToyResults toys={filteredToys} />
-      <ToyCTASection />
+      <section className="toyspace-results">
+        {isLoading && <p className="empty">読み込み中...</p>}
+        {error && <p className="empty toyspace-error">{error}</p>}
+        {!isLoading && !error && filteredToys.length === 0 && <p className="empty">公開中のToyがありません。</p>}
+        <div className="toy-grid">
+          {filteredToys.map(({ vault, note }) => (
+            <article key={`${vault.slug}/${note.slug}`} className="toy-card">
+              <Link to={`/toy-space/${vault.slug}/${note.slug}`} className="card-link">
+                <div className="toy-meta">
+                  <span className="badge badge-reference">{vault.title}</span>
+                  <span className="date">更新: {new Date(note.updated_at).toLocaleDateString('ja-JP')}</span>
+                </div>
+                <h3>{note.title}</h3>
+                {note.summary && <p>{note.summary}</p>}
+                <div className="toy-tags">
+                  {note.group && <span className="chip">{note.group}</span>}
+                  {note.tags.map((tag) => <span key={tag.slug} className="chip">{tag.name}</span>)}
+                </div>
+                <div className="toy-footer"><span>{note.content_type}</span><span className="detail-link">詳細を見る →</span></div>
+              </Link>
+            </article>
+          ))}
+        </div>
+      </section>
     </main>
   )
 }
-
-interface ToySearchPanelProps {
-  query: string
-  onQueryChange: (value: string) => void
-  category: ToyCategory | 'all'
-  onCategoryChange: (value: ToyCategory | 'all') => void
-  difficulty: ToyDifficulty | 'all'
-  onDifficultyChange: (value: ToyDifficulty | 'all') => void
-  sortOrder: 'latest' | 'popular'
-  onSortOrderChange: (value: 'latest' | 'popular') => void
-  selectedTags: string[]
-  onToggleTag: (tagId: string) => void
-}
-
-const categoryOptions: { value: ToyCategory | 'all'; label: string }[] = [
-  { value: 'all', label: 'すべて' },
-  { value: 'blog', label: 'Blog' },
-  { value: 'reference', label: 'Reference' },
-  { value: 'tutorial', label: 'Tutorial' },
-]
-
-const difficultyOptions: { value: ToyDifficulty | 'all'; label: string }[] = [
-  { value: 'all', label: '難易度：すべて' },
-  { value: 'beginner', label: 'Beginner' },
-  { value: 'intermediate', label: 'Intermediate' },
-  { value: 'advanced', label: 'Advanced' },
-]
-
-const ToySearchPanel = ({
-  query,
-  onQueryChange,
-  category,
-  onCategoryChange,
-  difficulty,
-  onDifficultyChange,
-  sortOrder,
-  onSortOrderChange,
-  selectedTags,
-  onToggleTag,
-}: ToySearchPanelProps) => (
-  <section className="toyspace-panel">
-    <div className="search-input-row">
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => onQueryChange(e.target.value)}
-        placeholder="キーワードで検索（例: WebGL, AI, Rust）"
-      />
-    </div>
-    <div className="filter-row">
-      <select value={category} onChange={(e) => onCategoryChange(e.target.value as ToyCategory | 'all')}>
-        {categoryOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <select
-        value={difficulty}
-        onChange={(e) => onDifficultyChange(e.target.value as ToyDifficulty | 'all')}
-      >
-        {difficultyOptions.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-      <select value={sortOrder} onChange={(e) => onSortOrderChange(e.target.value as 'latest' | 'popular')}>
-        <option value="latest">最新順</option>
-        <option value="popular">人気順</option>
-      </select>
-    </div>
-    <div className="tag-grid">
-      {toyTags.map((tag) => {
-        const isActive = selectedTags.includes(tag.id)
-        return (
-          <button
-            key={tag.id}
-            type="button"
-            className={isActive ? 'tag-chip active' : 'tag-chip'}
-            style={tag.color ? { borderColor: tag.color } : undefined}
-            onClick={() => onToggleTag(tag.id)}
-          >
-            <span>{tag.label}</span>
-          </button>
-        )
-      })}
-    </div>
-  </section>
-)
-
-const ToyResults = ({ toys }: { toys: typeof toyEntries }) => (
-  <section className="toyspace-results">
-    {toys.length === 0 ? (
-      <p className="empty">条件に一致するToyが見つかりません。タグやキーワードを見直してください。</p>
-    ) : (
-      <div className="toy-grid">
-        {toys.map((toy) => (
-          <article key={toy.id} className="toy-card">
-            <Link to={`/toy-space/${toy.slug}`} className="card-link">
-              {toy.heroImage && (
-                <img src={toy.heroImage} alt="" loading="lazy" />
-              )}
-              <div className="toy-meta">
-                <span className={`badge badge-${toy.category}`}>{toy.category}</span>
-                <span className="date">更新: {toy.lastUpdated}</span>
-              </div>
-              <h3>{toy.title}</h3>
-              <p>{toy.summary}</p>
-              <div className="toy-tags">
-                {toy.tags.map((tagId) => {
-                  const tag = toyTags.find((t) => t.id === tagId)
-                  return (
-                    <span key={tagId} className="chip" style={tag?.color ? { borderColor: tag.color } : undefined}>
-                      {tag?.label ?? tagId}
-                    </span>
-                  )
-                })}
-              </div>
-              <div className="toy-footer">
-                <span className="difficulty">難易度: {toy.difficulty}</span>
-                <span className="detail-link">詳細を見る →</span>
-              </div>
-            </Link>
-          </article>
-        ))}
-      </div>
-    )}
-  </section>
-)
-
-// 未実装
-const ToyCTASection = () => (
-  <section className="toyspace-cta">
-    <div>
-      <h2>最新のToyをメールで受け取る</h2>
-      <p>月1回、実験ログと技術ノートをダイジェストでお届けします。</p>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault()
-          alert('ありがとうございます！ニュースレターに登録しました。')
-        }}
-      >
-        <input type="email" placeholder="you@example.com" required />
-        <button type="submit">登録する</button>
-      </form>
-    </div>
-    <div>
-      <h3>あなたのToyも掲載しませんか？</h3>
-      <p>試作コード、技術検証、ブログ草稿などを募集しています。軽いメモでも歓迎です。</p>
-      <a className="cta-link" href="mailto:contact@ahaha-craft.org">
-        投稿の相談をする
-      </a>
-    </div>
-  </section>
-)
 
 export default ToySpace

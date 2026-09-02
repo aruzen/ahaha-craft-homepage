@@ -53,15 +53,15 @@ const DocsNoteView = () => {
   }, [content, note, vaultSlug])
 
   return (
-    <main className="docs-page">
+    <main className="docs-page toy-doc-page">
       <div className="docs-shell">
         <header className="docs-header">
           <div>
             <h2>{note?.title ?? noteSlug}</h2>
             {note?.summary && <p>{note.summary}</p>}
           </div>
-          <Link className="docs-back" to={`/docs/${vaultSlug}`}>
-            ノート一覧へ
+          <Link className="docs-back" to="/toy-space">
+            Toy Spaceへ戻る
           </Link>
         </header>
         {isLoading && <p className="docs-empty">読み込み中...</p>}
@@ -77,7 +77,7 @@ const DocsNoteView = () => {
                   rehypePlugins={[rehypeHighlight]}
                   components={{
                     a: ({ href, children }) => {
-                      const target = href?.startsWith('/docs/') ? undefined : '_blank'
+                      const target = href?.startsWith('/toy-space/') ? undefined : '_blank'
                       return (
                         <a href={href} target={target} rel={target ? 'noreferrer' : undefined}>
                           {children}
@@ -122,7 +122,7 @@ const transformObsidianMarkdown = (
     if (!link?.target_slug) {
       return label
     }
-    return `[${label}](/docs/${vaultSlug}/${link.target_slug})`
+    return `[${label}](/toy-space/${vaultSlug}/${link.target_slug})`
   })
 }
 
