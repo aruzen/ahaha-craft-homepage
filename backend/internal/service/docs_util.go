@@ -1,6 +1,8 @@
 package service
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"path"
 	"regexp"
 	"strings"
@@ -28,7 +30,16 @@ func SafeDocSlug(value string) string {
 
 func docSlugFromPath(relPath string) string {
 	ext := path.Ext(relPath)
-	return SafeDocSlug(strings.TrimSuffix(relPath, ext))
+	stem := strings.TrimSuffix(strings.ReplaceAll(relPath, "\\", "/"), ext)
+	base := SafeDocSlug(stem)
+	if base == "docs" {
+		base = "note"
+	}
+	if len(base) > 180 {
+		base = strings.Trim(base[:180], "-")
+	}
+	sum := sha256.Sum256([]byte(strings.ToLower(stem)))
+	return base + "-" + hex.EncodeToString(sum[:6])
 }
 
 func tagSlug(value string) string {

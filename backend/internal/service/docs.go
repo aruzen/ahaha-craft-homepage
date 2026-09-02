@@ -243,6 +243,9 @@ func (s *DocService) AdminRegisterVault(ctx context.Context, session domain.Sess
 	if err := s.repo.UpsertVault(ctx, vault); err != nil {
 		return domain.DocVault{}, err
 	}
+	if err := s.syncVault(ctx, vault); err != nil {
+		return domain.DocVault{}, err
+	}
 	return vault, nil
 }
 
@@ -268,17 +271,37 @@ func (s *DocService) AdminSyncVault(ctx context.Context, session domain.SessionD
 	if err != nil {
 		return err
 	}
+	return s.syncVault(ctx, vault)
+}
+
+func (s *DocService) SyncRegisteredVaults(ctx context.Context) error {
+	vaults, err := s.repo.ListVaults(ctx, false)
+	if err != nil {
+		return err
+	}
+	for _, vault := range vaults {
+		if vault.Status != "active" || vault.SourceType != domain.DocSourceGitVault {
+			continue
+		}
+		if err := s.syncVault(ctx, vault); err != nil {
+			return fmt.Errorf("sync %s: %w", vault.Slug, err)
+		}
+	}
+	return nil
+}
+
+func (s *DocService) syncVault(ctx context.Context, vault domain.DocVault) error {
 	if err := validateBranchName(ctx, s.repoPath, vault.Branch); err != nil {
 		return err
 	}
 	if err := s.exportBranch(ctx, vault.Branch, vault.LocalPath); err != nil {
 		return err
 	}
-	s.cache.InvalidateVault(vaultSlug)
+	s.cache.InvalidateVault(vault.Slug)
 	if err := s.RescanVault(ctx, vault); err != nil {
 		return err
 	}
-	return s.repo.MarkVaultSynced(ctx, vaultSlug, time.Now().UTC())
+	return s.repo.MarkVaultSynced(ctx, vault.Slug, time.Now().UTC())
 }
 
 func (s *DocService) AdminRescanVault(ctx context.Context, session domain.SessionData, vaultSlug string) error {

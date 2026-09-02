@@ -83,6 +83,9 @@ func newHTTPHandler(pool *pgxpool.Pool, logger *log.Logger) http.Handler {
 	}
 	hueGetService := service.NewHueGetService(hueRepo, sessionRepo, userRepo, logger)
 	docService := service.NewDocService(docRepo, sessionRepo, userRepo, logger, loadDocConfig())
+	if err := docService.SyncRegisteredVaults(context.Background()); err != nil {
+		logger.Printf("docs startup sync error: %v", err)
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/sign-in", withCORS(handler.NewSignInHandler(signInService)))

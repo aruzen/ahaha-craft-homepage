@@ -78,7 +78,7 @@ hidden
 
 	var guide domain.DocNote
 	for _, note := range notes {
-		if note.Slug == "guide" {
+		if note.SourcePath == "Guide.md" {
 			guide = note
 		}
 	}
@@ -88,7 +88,7 @@ hidden
 	if len(guide.Tags) != 2 || guide.Tags[0].Slug != "go" || guide.Tags[1].Slug != "docs" {
 		t.Fatalf("unexpected tags: %+v", guide.Tags)
 	}
-	if len(guide.Metadata.Links) != 1 || guide.Metadata.Links[0].TargetSlug != "other-note" {
+	if len(guide.Metadata.Links) != 1 || guide.Metadata.Links[0].TargetSlug != docSlugFromPath("Other Note.md") {
 		t.Fatalf("unexpected links: %+v", guide.Metadata.Links)
 	}
 	if len(guide.Metadata.Embeds) != 1 || guide.Metadata.Embeds[0].AssetPath != "assets/image.png" {
@@ -106,6 +106,20 @@ func TestSafeJoinRejectsTraversal(t *testing.T) {
 	}
 	if _, err := safeJoin(root, "docs/note.md"); err != nil {
 		t.Fatalf("expected safe path, got %v", err)
+	}
+}
+
+func TestDocSlugFromUnicodePathIsStableAndUnique(t *testing.T) {
+	first := docSlugFromPath("数学/理論.md")
+	second := docSlugFromPath("数学/言語.md")
+	if first == second {
+		t.Fatalf("unicode paths collided: %q", first)
+	}
+	if first != docSlugFromPath("数学/理論.md") {
+		t.Fatal("slug is not stable")
+	}
+	if !validSlug(first) || !validSlug(second) {
+		t.Fatalf("invalid generated slugs: %q %q", first, second)
 	}
 }
 
