@@ -9,8 +9,6 @@ import ToySpace from './pages/toy-space/ToySpace'
 import ToyDetail from './pages/toy-space/ToyDetail'
 import Contact from './pages/contact/Contact'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import DocsNoteView from './pages/docs/DocsNoteView'
-import { ToySpaceProvider } from './contexts/ToySpaceContext'
 import { clearSessionState, loadSessionState, saveSessionState } from './utils/sessionStorage'
 import './App.css'
 
@@ -172,24 +170,8 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/hue-are-you" element={<HueAreYouApp />} />
         <Route path="/portfolio" element={<Portfolio />} />
-        <Route
-          path="/toy-space"
-          element={
-            <ToySpaceProvider>
-              <ToySpace />
-            </ToySpaceProvider>
-          }
-        />
-        <Route
-          path="/toy-space/:slug"
-          element={
-            <ToySpaceProvider>
-              <ToyDetail />
-            </ToySpaceProvider>
-          }
-        />
-        <Route path="/toy-space/:vaultSlug/:noteSlug" element={<DocsNoteView />} />
-        <Route path="/docs/*" element={<Navigate to="/toy-space" replace />} />
+        <Route path="/toy-space" element={<ToySpace />} />
+        <Route path="/toy-space/:vaultSlug/:noteSlug" element={<ToyDetail />} />
         <Route path="/contact" element={<Contact />} />
         <Route
           path="/admin"

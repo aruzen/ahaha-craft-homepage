@@ -1,77 +1,108 @@
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
-import { toyEntries, toyTags } from '../../data/toys'
+import remarkGfm from 'remark-gfm'
+import { ApiError, fetchDocContent, fetchDocNote, getDocAssetUrl, type DocNote, type DocReference } from '../../api'
 import './ToyDetail.css'
 import 'highlight.js/styles/github-dark.css'
 
 const ToyDetail = () => {
-  const { slug } = useParams<{ slug: string }>()
-  const toy = toyEntries.find((entry) => entry.slug === slug)
+  const { vaultSlug = '', noteSlug = '' } = useParams()
+  const [note, setNote] = useState<DocNote | null>(null)
+  const [content, setContent] = useState('')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  if (!toy) {
-    return <Navigate to="/toy-space" replace />
-  }
+  useEffect(() => {
+    const controller = new AbortController()
+    setIsLoading(true)
+    Promise.all([
+      fetchDocNote(vaultSlug, noteSlug, { signal: controller.signal }),
+      fetchDocContent(vaultSlug, noteSlug, { signal: controller.signal }),
+    ])
+      .then(([loadedNote, body]) => {
+        setNote(loadedNote)
+        setContent(body)
+        setError(null)
+      })
+      .catch((err) => {
+        if (!controller.signal.aborted) setError(err instanceof ApiError ? err.message : 'Toyの取得に失敗しました')
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoading(false)
+      })
+    return () => controller.abort()
+  }, [noteSlug, vaultSlug])
 
-  const related = toyEntries.filter((entry) => entry.id !== toy.id && entry.tags.some((tag) => toy.tags.includes(tag))).slice(0, 3)
+  const markdown = useMemo(
+    () => note ? transformObsidianMarkdown(content, vaultSlug, note.metadata.links, note.metadata.embeds) : '',
+    [content, note, vaultSlug]
+  )
 
   return (
     <main className="toy-detail">
       <section className="toy-detail-hero">
         <div>
           <p className="eyebrow">Toy Space</p>
-          <h1>{toy.title}</h1>
-          <p>{toy.summary}</p>
-          <div className="detail-meta">
-            <span className={`badge badge-${toy.category}`}>{toy.category}</span>
-            <span>更新: {toy.lastUpdated}</span>
-            <span>難易度: {toy.difficulty}</span>
-            {toy.repositoryUrl && (
-              <a href={toy.repositoryUrl} target="_blank" rel="noreferrer">
-                Repository ↗
-              </a>
-            )}
-          </div>
-          <div className="detail-tags">
-            {toy.tags.map((tagId) => {
-              const tag = toyTags.find((t) => t.id === tagId)
-              return (
-                <span key={tagId} className="chip" style={tag?.color ? { borderColor: tag.color } : undefined}>
-                  {tag?.label ?? tagId}
-                </span>
-              )
-            })}
-          </div>
+          <h1>{note?.title ?? noteSlug}</h1>
+          {note?.summary && <p>{note.summary}</p>}
+          {note && (
+            <div className="detail-meta">
+              <span className="badge badge-reference">{vaultSlug}</span>
+              <span>更新: {new Date(note.updated_at).toLocaleDateString('ja-JP')}</span>
+              {note.group && <span>{note.group}</span>}
+            </div>
+          )}
+          {note && <div className="detail-tags">{note.tags.map((tag) => <span key={tag.slug} className="chip">{tag.name}</span>)}</div>}
         </div>
-        {toy.heroImage && <img src={toy.heroImage} alt="" loading="lazy" />}
+        <Link className="toy-detail-back" to="/toy-space">Toy Spaceへ戻る</Link>
       </section>
 
-      <section className="toy-content">
-        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeHighlight]}>
-          {toy.content}
-        </ReactMarkdown>
-      </section>
-
-      {related.length > 0 && (
-        <section className="toy-related">
-          <div className="related-header">
-            <h2>関連Toy</h2>
-            <Link to="/toy-space">一覧へ戻る</Link>
-          </div>
-          <div className="related-grid">
-            {related.map((item) => (
-              <Link key={item.id} to={`/toy-space/${item.slug}`} className="related-card">
-                <h3>{item.title}</h3>
-                <p>{item.summary}</p>
-                <span>更新: {item.lastUpdated}</span>
-              </Link>
-            ))}
-          </div>
+      {isLoading && <p className="toy-detail-state">読み込み中...</p>}
+      {error && <p className="toy-detail-state toy-detail-error">{error}</p>}
+      {!isLoading && !error && note && (
+        <section className="toy-content">
+          {note.content_type === 'html' ? (
+            <iframe className="toy-html-frame" title={note.title} sandbox="allow-same-origin" srcDoc={content} />
+          ) : (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              rehypePlugins={[rehypeHighlight]}
+              components={{
+                a: ({ href, children }) => {
+                  const internal = href?.startsWith('/toy-space/')
+                  return <a href={href} target={internal ? undefined : '_blank'} rel={internal ? undefined : 'noreferrer'}>{children}</a>
+                },
+                img: ({ src, alt }) => <img src={resolveImage(vaultSlug, src)} alt={alt ?? ''} loading="lazy" />,
+              }}
+            >
+              {markdown}
+            </ReactMarkdown>
+          )}
         </section>
       )}
     </main>
   )
+}
+
+const transformObsidianMarkdown = (content: string, vaultSlug: string, links: DocReference[], embeds: DocReference[]) => {
+  const linkMap = new Map(links.map((link) => [link.raw, link]))
+  const embedMap = new Map(embeds.map((embed) => [embed.raw, embed]))
+  return content.replace(/(!?)\[\[([^\]|#]+)(?:#[^\]|]+)?(?:\|([^\]]+))?\]\]/g, (_match, bang, raw, alias) => {
+    const label = alias || raw
+    if (bang) {
+      const assetPath = embedMap.get(raw)?.asset_path
+      return assetPath ? `![${label}](${getDocAssetUrl(vaultSlug, assetPath)})` : label
+    }
+    const targetSlug = linkMap.get(raw)?.target_slug
+    return targetSlug ? `[${label}](/toy-space/${vaultSlug}/${targetSlug})` : label
+  })
+}
+
+const resolveImage = (vaultSlug: string, src?: string) => {
+  if (!src || /^https?:\/\//i.test(src) || src.startsWith('data:')) return src
+  return getDocAssetUrl(vaultSlug, src.replace(/^\.?\//, ''))
 }
 
 export default ToyDetail
