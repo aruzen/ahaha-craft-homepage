@@ -13,6 +13,7 @@ const ToySpace = () => {
   const [query, setQuery] = useState('')
   const [vaultSlug, setVaultSlug] = useState('all')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [contentType, setContentType] = useState<'all' | 'markdown' | 'html' | 'book'>('all')
   const [sortOrder, setSortOrder] = useState<'latest' | 'title'>('latest')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -66,10 +67,31 @@ const ToySpace = () => {
         : a.note.title.localeCompare(b.note.title, 'ja'))
   }, [query, selectedTags, sortOrder, toys, vaultSlug])
 
+  const standaloneToys = useMemo(
+    () => filteredToys.filter(({ note }) => !note.group && (contentType === 'all' || contentType === note.content_type)),
+    [contentType, filteredToys]
+  )
+  const books = useMemo(() => {
+    if (contentType !== 'all' && contentType !== 'book') return []
+    const grouped = new Map<string, { vault: DocVault; title: string; chapters: DocNote[] }>()
+    for (const { vault, note } of filteredToys) {
+      if (!note.group) continue
+      const key = `${vault.slug}/${note.group}`
+      const book = grouped.get(key) ?? { vault, title: note.group, chapters: [] }
+      book.chapters.push(note)
+      grouped.set(key, book)
+    }
+    return Array.from(grouped.values()).map((book) => ({
+      ...book,
+      chapters: book.chapters.sort((a, b) => a.order - b.order || a.title.localeCompare(b.title, 'ja')),
+    }))
+  }, [contentType, filteredToys])
+
   const resetFilters = () => {
     setQuery('')
     setVaultSlug('all')
     setSelectedTags([])
+    setContentType('all')
     setSortOrder('latest')
   }
 
@@ -95,6 +117,12 @@ const ToySpace = () => {
             <option value="latest">最新順</option>
             <option value="title">タイトル順</option>
           </select>
+          <select value={contentType} onChange={(e) => setContentType(e.target.value as typeof contentType)}>
+            <option value="all">すべての形式</option>
+            <option value="markdown">Markdown</option>
+            <option value="html">HTML</option>
+            <option value="book">Book</option>
+          </select>
         </div>
         {tags.length > 0 && (
           <div className="tag-grid">
@@ -117,16 +145,33 @@ const ToySpace = () => {
 
       <div className="toyspace-stats">
         <div><span>現在の検索語</span><strong>{query || '（未入力）'}</strong></div>
-        <div><span>ヒット数</span><strong>{filteredToys.length}</strong></div>
+        <div><span>ヒット数</span><strong>{standaloneToys.length + books.length}</strong></div>
         <button type="button" onClick={resetFilters}>条件をクリア</button>
       </div>
 
       <section className="toyspace-results">
         {isLoading && <p className="empty">読み込み中...</p>}
         {error && <p className="empty toyspace-error">{error}</p>}
-        {!isLoading && !error && filteredToys.length === 0 && <p className="empty">公開中のToyがありません。</p>}
+        {!isLoading && !error && standaloneToys.length === 0 && books.length === 0 && <p className="empty">公開中のToyがありません。</p>}
         <div className="toy-grid">
-          {filteredToys.map(({ vault, note }) => (
+          {books.map((book) => (
+            <article key={`${book.vault.slug}/${book.title}`} className="toy-card toy-book">
+              <div className="toy-meta">
+                <span className="badge badge-tutorial">Book</span>
+                <span>{book.vault.title}</span>
+              </div>
+              <h3>{book.title}</h3>
+              <div className="toy-book-chapters">
+                {book.chapters.map((chapter, index) => (
+                  <Link key={chapter.slug} to={`/toy-space/${book.vault.slug}/${chapter.slug}`}>
+                    <span>{chapter.order || index + 1}</span>
+                    <strong>{chapter.title}</strong>
+                  </Link>
+                ))}
+              </div>
+            </article>
+          ))}
+          {standaloneToys.map(({ vault, note }) => (
             <article key={`${vault.slug}/${note.slug}`} className="toy-card">
               <Link to={`/toy-space/${vault.slug}/${note.slug}`} className="card-link">
                 <div className="toy-meta">
