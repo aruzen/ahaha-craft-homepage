@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { getWords } from '../../../data/words'
 import { colors, colorToHex } from '../../../data/colors'
 import { WordColorAssignment, Color } from '../../../types'
@@ -16,6 +16,9 @@ const SelectionScreen: React.FC<SelectionScreenProps> = ({ onComplete, onBack })
   )
   const [currentWordIndex, setCurrentWordIndex] = useState(0)
   const [draggedWord, setDraggedWord] = useState<string | null>(null)
+  const [windowWidth, setWindowWidth] = useState(() => (
+    typeof window !== 'undefined' ? window.innerWidth : 0
+  ))
 
   const currentWord = assignments[currentWordIndex]
   const progress = ((currentWordIndex + 1) / wordsToUse.length) * 100
@@ -60,6 +63,13 @@ const SelectionScreen: React.FC<SelectionScreenProps> = ({ onComplete, onBack })
     setDraggedWord(null)
   }
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
+
   return (
     <div className="selection-screen">
       <div className="selection-header">
@@ -102,7 +112,7 @@ const SelectionScreen: React.FC<SelectionScreenProps> = ({ onComplete, onBack })
           <div className="color-circle">
             {colors.map((color, index) => {
               const angle = (index * 360) / colors.length
-              const radius = 180
+              const radius = windowWidth <= 370 ? (windowWidth / 2) - 5 : 180
               const x = Math.cos((angle - 90) * Math.PI / 180) * radius
               const y = Math.sin((angle - 90) * Math.PI / 180) * radius
               

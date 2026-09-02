@@ -262,3 +262,10 @@
     font-size: 0.6rem;
   }
 }
+
+@media (max-width: 370px) {
+  .color-option {
+    width: clamp(32px, 12vw, 45px);
+    height: clamp(32px, 12vw, 45px);
+  }
+}
