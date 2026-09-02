@@ -10,13 +10,14 @@ import (
 )
 
 type DocVaultPayload struct {
-	Slug         string  `json:"slug"`
-	Title        string  `json:"title"`
-	Branch       string  `json:"branch,omitempty"`
-	LocalPath    string  `json:"local_path,omitempty"`
-	Status       string  `json:"status,omitempty"`
-	LastSyncedAt *string `json:"last_synced_at,omitempty"`
-	SourceType   string  `json:"source_type"`
+	Slug             string  `json:"slug"`
+	Title            string  `json:"title"`
+	Branch           string  `json:"branch,omitempty"`
+	LocalPath        string  `json:"local_path,omitempty"`
+	Status           string  `json:"status,omitempty"`
+	LastSyncedAt     *string `json:"last_synced_at,omitempty"`
+	SourceType       string  `json:"source_type"`
+	DefaultPublished bool    `json:"default_published,omitempty"`
 }
 
 type DocTagPayload struct {
@@ -87,6 +88,11 @@ type DocVaultActionRequest struct {
 	Session DocSessionPayload `json:"session"`
 }
 
+type DocDefaultPublishedRequest struct {
+	Session          DocSessionPayload `json:"session"`
+	DefaultPublished bool              `json:"default_published"`
+}
+
 type DocOverridePublishedRequest struct {
 	Session   DocSessionPayload `json:"session"`
 	Published bool              `json:"published"`
@@ -124,6 +130,7 @@ func NewDocVaultPayload(vault domain.DocVault, includeAdminFields bool) DocVault
 		payload.Branch = vault.Branch
 		payload.LocalPath = vault.LocalPath
 		payload.Status = vault.Status
+		payload.DefaultPublished = vault.DefaultPublished
 	}
 	if vault.LastSyncedAt != nil {
 		formatted := vault.LastSyncedAt.Format("2006-01-02T15:04:05Z07:00")

@@ -189,6 +189,25 @@ func (s *DocService) AdminListNotes(ctx context.Context, session domain.SessionD
 	return s.repo.ListNotes(ctx, vaultSlug, "", "", false)
 }
 
+func (s *DocService) AdminSetDefaultPublished(ctx context.Context, session domain.SessionData, vaultSlug string, value bool) error {
+	if err := s.requireAdmin(ctx, session); err != nil {
+		return err
+	}
+	if !validSlug(vaultSlug) {
+		return ErrDocInvalidInput
+	}
+	if err := s.repo.SetVaultDefaultPublished(ctx, vaultSlug, value); errors.Is(err, pgx.ErrNoRows) {
+		return ErrDocNotFound
+	} else if err != nil {
+		return err
+	}
+	vault, err := s.repo.GetVault(ctx, vaultSlug)
+	if err != nil {
+		return err
+	}
+	return s.RescanVault(ctx, vault)
+}
+
 func (s *DocService) AdminUpdateNoteMetadata(ctx context.Context, session domain.SessionData, vaultSlug, noteSlug string, override domain.DocNoteOverride) error {
 	if err := s.requireAdmin(ctx, session); err != nil {
 		return err
@@ -475,12 +494,15 @@ func scanDocNoteFile(vault domain.DocVault, relPath, fullPath string, updatedAt 
 		Summary:     meta.String("summary"),
 		SourcePath:  relPath,
 		ContentType: noteContentType(relPath),
-		Published:   meta.Bool("published"),
+		Published:   vault.DefaultPublished,
 		Order:       meta.Int("order"),
 		Group:       meta.String("group"),
 		Tags:        meta.Tags(),
 		Metadata:    parseObsidianReferences(body),
 		UpdatedAt:   updatedAt.UTC(),
+	}
+	if meta.Has("published") {
+		note.Published = meta.Bool("published")
 	}
 	if note.Group == "" {
 		group := filepath.ToSlash(filepath.Dir(relPath))
@@ -560,6 +582,8 @@ func stripFrontmatter(raw string) string {
 func (m frontmatter) String(key string) string {
 	return strings.TrimSpace(m[strings.ToLower(key)])
 }
+
+func (m frontmatter) Has(key string) bool { _, ok := m[strings.ToLower(key)]; return ok }
 
 func (m frontmatter) Bool(key string) bool {
 	value := strings.ToLower(m.String(key))

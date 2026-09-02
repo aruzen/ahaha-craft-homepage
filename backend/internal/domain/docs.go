@@ -3,13 +3,14 @@ package domain
 import "time"
 
 type DocVault struct {
-	Slug         string
-	Title        string
-	Branch       string
-	LocalPath    string
-	Status       string
-	LastSyncedAt *time.Time
-	SourceType   string
+	Slug             string
+	Title            string
+	Branch           string
+	LocalPath        string
+	Status           string
+	LastSyncedAt     *time.Time
+	SourceType       string
+	DefaultPublished bool
 }
 
 const (

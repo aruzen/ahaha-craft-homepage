@@ -23,7 +23,7 @@ func NewDocRepository(db *pgxpool.Pool) *DocRepository {
 
 func (r *DocRepository) ListVaults(ctx context.Context, publicOnly bool) ([]domain.DocVault, error) {
 	query := `
-		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type
+		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type, default_published
 		FROM doc_vaults
 	`
 	if publicOnly {
@@ -50,7 +50,7 @@ func (r *DocRepository) ListVaults(ctx context.Context, publicOnly bool) ([]doma
 
 func (r *DocRepository) GetVault(ctx context.Context, slug string) (domain.DocVault, error) {
 	row := r.db.QueryRow(ctx, `
-		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type
+		SELECT slug, title, COALESCE(branch, ''), local_path, status, last_synced_at, source_type, default_published
 		FROM doc_vaults
 		WHERE slug = $1
 	`, slug)
@@ -59,16 +59,17 @@ func (r *DocRepository) GetVault(ctx context.Context, slug string) (domain.DocVa
 
 func (r *DocRepository) UpsertVault(ctx context.Context, vault domain.DocVault) error {
 	_, err := r.db.Exec(ctx, `
-		INSERT INTO doc_vaults (slug, title, branch, local_path, status, source_type, updated_at)
-		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, NOW())
+		INSERT INTO doc_vaults (slug, title, branch, local_path, status, source_type, default_published, updated_at)
+		VALUES ($1, $2, NULLIF($3, ''), $4, $5, $6, $7, NOW())
 		ON CONFLICT (slug) DO UPDATE SET
 			title = EXCLUDED.title,
 			branch = EXCLUDED.branch,
 			local_path = EXCLUDED.local_path,
 			status = EXCLUDED.status,
 			source_type = EXCLUDED.source_type,
+			default_published = EXCLUDED.default_published,
 			updated_at = NOW()
-	`, vault.Slug, vault.Title, vault.Branch, vault.LocalPath, vault.Status, vault.SourceType)
+	`, vault.Slug, vault.Title, vault.Branch, vault.LocalPath, vault.Status, vault.SourceType, vault.DefaultPublished)
 	return err
 }
 
@@ -158,7 +159,7 @@ func (r *DocRepository) ReplaceScan(ctx context.Context, vaultSlug string, notes
 
 func (r *DocRepository) ListPublishedToys(ctx context.Context) ([]domain.DocToy, error) {
 	rows, err := r.db.Query(ctx, `
-		SELECT v.slug, v.title, COALESCE(v.branch, ''), v.local_path, v.status, v.last_synced_at, v.source_type,
+		SELECT v.slug, v.title, COALESCE(v.branch, ''), v.local_path, v.status, v.last_synced_at, v.source_type, v.default_published,
 		       n.vault_slug, n.slug, n.title, n.summary, n.source_path, n.content_type, n.published,
 		       n.display_order, n.note_group, n.metadata, n.updated_at
 		FROM doc_notes n
@@ -176,7 +177,7 @@ func (r *DocRepository) ListPublishedToys(ctx context.Context) ([]domain.DocToy,
 		var lastSynced *time.Time
 		var metadataJSON []byte
 		if err := rows.Scan(
-			&toy.Vault.Slug, &toy.Vault.Title, &toy.Vault.Branch, &toy.Vault.LocalPath, &toy.Vault.Status, &lastSynced, &toy.Vault.SourceType,
+			&toy.Vault.Slug, &toy.Vault.Title, &toy.Vault.Branch, &toy.Vault.LocalPath, &toy.Vault.Status, &lastSynced, &toy.Vault.SourceType, &toy.Vault.DefaultPublished,
 			&toy.Note.VaultSlug, &toy.Note.Slug, &toy.Note.Title, &toy.Note.Summary, &toy.Note.SourcePath,
 			&toy.Note.ContentType, &toy.Note.Published, &toy.Note.Order, &toy.Note.Group, &metadataJSON, &toy.Note.UpdatedAt,
 		); err != nil {
@@ -243,6 +244,17 @@ func (r *DocRepository) UpsertNoteOverride(ctx context.Context, vaultSlug, noteS
 			tags=EXCLUDED.tags, updated_at=NOW()
 	`, vaultSlug, noteSlug, override.Title, override.Summary, override.Published, override.Order, override.Group, tagsJSON)
 	return err
+}
+
+func (r *DocRepository) SetVaultDefaultPublished(ctx context.Context, slug string, value bool) error {
+	result, err := r.db.Exec(ctx, `UPDATE doc_vaults SET default_published=$2, updated_at=NOW() WHERE slug=$1`, slug, value)
+	if err != nil {
+		return err
+	}
+	if result.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+	return nil
 }
 
 func applyNoteOverride(ctx context.Context, tx pgx.Tx, vaultSlug string, note domain.DocNote) (domain.DocNote, error) {
@@ -390,7 +402,7 @@ type docRowScanner interface {
 func scanDocVault(row docRowScanner) (domain.DocVault, error) {
 	var vault domain.DocVault
 	var lastSyncedAt *time.Time
-	err := row.Scan(&vault.Slug, &vault.Title, &vault.Branch, &vault.LocalPath, &vault.Status, &lastSyncedAt, &vault.SourceType)
+	err := row.Scan(&vault.Slug, &vault.Title, &vault.Branch, &vault.LocalPath, &vault.Status, &lastSyncedAt, &vault.SourceType, &vault.DefaultPublished)
 	vault.LastSyncedAt = lastSyncedAt
 	return vault, err
 }

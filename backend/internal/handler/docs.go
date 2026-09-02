@@ -24,6 +24,7 @@ type DocsService interface {
 	AdminListBranches(ctx context.Context, session domain.SessionData) ([]string, error)
 	AdminListVaults(ctx context.Context, session domain.SessionData) ([]domain.DocVault, error)
 	AdminListNotes(ctx context.Context, session domain.SessionData, vaultSlug string) ([]domain.DocNote, error)
+	AdminSetDefaultPublished(ctx context.Context, session domain.SessionData, vaultSlug string, value bool) error
 	AdminUpdateNoteMetadata(ctx context.Context, session domain.SessionData, vaultSlug, noteSlug string, override domain.DocNoteOverride) error
 	AdminUpload(ctx context.Context, session domain.SessionData, upload service.DocUpload) error
 	AdminTrashLocal(ctx context.Context, session domain.SessionData, noteSlug string) error
@@ -324,6 +325,23 @@ func (h *DocsHandler) handleAdminVaultAction(w http.ResponseWriter, r *http.Requ
 			payloads[i] = api.NewDocNotePayload(note, true)
 		}
 		respondJSON(w, http.StatusOK, api.DocNotesResponse{Notes: payloads})
+		return
+	}
+	if len(parts) == 2 && parts[1] == "settings" {
+		var req api.DocDefaultPublishedRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		session, err := req.Session.ToDomain()
+		if err != nil {
+			respondInvalidField(w, "session")
+			return
+		}
+		if err := h.service.AdminSetDefaultPublished(r.Context(), session, vaultSlug, req.DefaultPublished); err != nil {
+			handleDocsError(w, err)
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 		return
 	}
 	if len(parts) == 2 {

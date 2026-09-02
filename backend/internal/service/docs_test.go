@@ -144,6 +144,27 @@ func TestScanLocalUploadsSeparatesNotesAndBooks(t *testing.T) {
 	}
 }
 
+func TestScanUsesVaultDefaultPublishedOnlyWhenMissing(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "default.md"), "no frontmatter")
+	writeTestFile(t, filepath.Join(root, "private.md"), "---\npublished: false\n---\nprivate")
+	vault := domain.DocVault{Slug: "main", LocalPath: root, DefaultPublished: true}
+	notes, _, err := scanDocVault(vault)
+	if err != nil {
+		t.Fatal(err)
+	}
+	values := map[string]bool{}
+	for _, note := range notes {
+		values[note.Title] = note.Published
+	}
+	if !values["default"] {
+		t.Fatal("missing published did not use vault default")
+	}
+	if values["private"] {
+		t.Fatal("explicit published:false did not override vault default")
+	}
+}
+
 func TestExportBranchCopiesLocalGitBranch(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
