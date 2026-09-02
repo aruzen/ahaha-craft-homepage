@@ -11,6 +11,7 @@ import type {
   DocNotesResponse,
   DocVault,
   DocVaultsResponse,
+	DocToysResponse,
   RegisterDocVaultPayload,
   SessionData,
 } from './types'
@@ -204,6 +205,9 @@ export const fetchDocVaults = async (
     signal: options?.signal,
   })
 
+export const fetchDocToys = async (options?: { signal?: AbortSignal }): Promise<DocToysResponse> =>
+  request<DocToysResponse>('docs/toys', { signal: options?.signal })
+
 export const fetchDocNotes = async (
   vaultSlug: string,
   params?: { tag?: string; group?: string },
@@ -325,5 +329,41 @@ export const overrideDocNotePublished = async (
     body: { session, published },
     signal: options?.signal,
   })
+
+export const fetchAdminDocNotes = async (session: SessionData, sourceSlug: string): Promise<DocNotesResponse> =>
+  request<DocNotesResponse>(`docs/admin/vaults/${sourceSlug}/notes`, { method: 'POST', body: { session } })
+
+export const updateAdminDocMetadata = async (
+  session: SessionData,
+  sourceSlug: string,
+  noteSlug: string,
+  metadata: { title?: string; summary?: string; published?: boolean; order?: number; group?: string; tags?: string[] }
+): Promise<void> => request<void>(`docs/admin/vaults/${sourceSlug}/notes/${noteSlug}/metadata`, {
+  method: 'POST', body: { session, ...metadata },
+})
+
+export const uploadDocContent = async (
+  session: SessionData,
+  input: { kind: 'note' | 'book'; slug: string; file: File; overwrite: boolean }
+): Promise<void> => {
+  const form = new FormData()
+  form.set('session', JSON.stringify(session)); form.set('kind', input.kind); form.set('slug', input.slug)
+  form.set('overwrite', String(input.overwrite)); form.set('file', input.file)
+  const response = await fetch(buildUrl('docs/admin/uploads'), { method: 'POST', body: form, headers: { Accept: 'application/json' } })
+  const raw = await response.text(); const data = raw ? safeJsonParse(raw) : null
+  if (!response.ok) {
+    const payload = data as Partial<ApiErrorResponseBody> | null
+    throw new ApiError({ status: response.status, message: payload?.message ?? `API request failed with status ${response.status}`, code: payload?.error, field: payload?.field, payload: data })
+  }
+}
+
+export const trashUploadedDoc = async (session: SessionData, noteSlug: string): Promise<void> =>
+  request<void>('docs/admin/uploads/trash', { method: 'POST', body: { session, note_slug: noteSlug } })
+
+export const fetchUploadedDocTrash = async (session: SessionData): Promise<{ items: string[] }> =>
+  request<{ items: string[] }>('docs/admin/uploads/trash/list', { method: 'POST', body: { session } })
+
+export const restoreUploadedDoc = async (session: SessionData, path: string): Promise<void> =>
+  request<void>('docs/admin/uploads/restore', { method: 'POST', body: { session, path } })
 
 export * from './types'

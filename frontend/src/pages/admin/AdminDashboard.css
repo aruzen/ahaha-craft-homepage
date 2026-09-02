@@ -280,6 +280,47 @@
   justify-content: flex-end;
 }
 
+.docs-upload-form {
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.docs-upload-form input[type='file'] {
+  max-width: 100%;
+}
+
+.doc-note-admin {
+  margin-top: 28px;
+}
+
+.doc-note-fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.doc-note-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #cfd8ff;
+}
+
+.doc-note-fields input {
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  background: rgba(4, 5, 14, 0.8);
+  color: #f5f6fb;
+}
+
+.doc-note-fields .doc-published {
+  flex-direction: row;
+  align-items: center;
+}
+
 @media (max-width: 960px) {
   .admin-dashboard {
     flex-direction: column;

@@ -57,6 +57,7 @@ export interface DocVault {
   local_path?: string
   status?: string
   last_synced_at?: string
+	 source_type: 'git_vault' | 'local_upload'
 }
 
 export interface DocTag {
@@ -88,6 +89,7 @@ export interface DocNote {
   metadata: DocNoteMetadata
   updated_at: string
   content_url: string
+	asset_base_url: string
 }
 
 export interface DocVaultsResponse {
@@ -97,6 +99,9 @@ export interface DocVaultsResponse {
 export interface DocNotesResponse {
   notes: DocNote[]
 }
+
+export interface DocToy { source: DocVault; note: DocNote }
+export interface DocToysResponse { toys: DocToy[] }
 
 export interface DocBranchesResponse {
   branches: string[]

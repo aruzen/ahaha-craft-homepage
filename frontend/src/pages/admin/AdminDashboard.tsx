@@ -4,10 +4,17 @@ import {
   disableDocVault,
   fetchAdminDocBranches,
   fetchAdminDocVaults,
+	 fetchAdminDocNotes,
+	 fetchUploadedDocTrash,
   fetchHueAreYouRecords,
   registerDocVault,
   rescanDocVault,
   syncDocVault,
+	 trashUploadedDoc,
+	 restoreUploadedDoc,
+	 updateAdminDocMetadata,
+	 uploadDocContent,
+	 type DocNote,
   type DocVault,
   type HueAreYouRecord,
   type SessionData,
@@ -246,6 +253,12 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<ErrorDescriptor | null>(null)
   const [message, setMessage] = useState<string | null>(null)
+	const [selectedSource, setSelectedSource] = useState<DocVault | null>(null)
+	const [notes, setNotes] = useState<DocNote[]>([])
+	const [uploadKind, setUploadKind] = useState<'note' | 'book'>('note')
+	const [uploadSlug, setUploadSlug] = useState('')
+	const [uploadFile, setUploadFile] = useState<File | null>(null)
+	const [trashItems, setTrashItems] = useState<string[]>([])
 
   const loadDocsAdminData = useCallback(async () => {
     setIsLoading(true)
@@ -310,9 +323,36 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
     }
   }
 
+	const loadNotes = async (source: DocVault) => {
+		setIsLoading(true); setError(null)
+		try { const response = await fetchAdminDocNotes(session, source.slug); setSelectedSource(source); setNotes(response.notes ?? []) }
+		catch (err) { setError(err instanceof ApiError ? { message: err.message } : { message: 'ノート一覧の取得に失敗しました' }) }
+		finally { setIsLoading(false) }
+	}
+
+	const handleUpload = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault(); if (!uploadFile || !uploadSlug) return
+		setIsLoading(true); setError(null); setMessage(null)
+		try {
+			try { await uploadDocContent(session, { kind: uploadKind, slug: uploadSlug, file: uploadFile, overwrite: false }) }
+			catch (err) {
+				if (!(err instanceof ApiError) || err.status !== 409 || !window.confirm('同名コンテンツを置換しますか？')) throw err
+				await uploadDocContent(session, { kind: uploadKind, slug: uploadSlug, file: uploadFile, overwrite: true })
+			}
+			setMessage('コンテンツをアップロードしました'); setUploadSlug(''); setUploadFile(null); await loadDocsAdminData()
+		} catch (err) { setError(err instanceof ApiError ? { message: err.message, code: err.code } : { message: 'アップロードに失敗しました' }) }
+		finally { setIsLoading(false) }
+	}
+
   useEffect(() => {
     void loadDocsAdminData()
+	void fetchUploadedDocTrash(session).then((response) => setTrashItems(response.items ?? [])).catch(() => undefined)
   }, [loadDocsAdminData])
+
+	const restoreTrash = async (path: string) => {
+		try { await restoreUploadedDoc(session, path); setTrashItems((items) => items.filter((item) => item !== path)); setMessage('コンテンツを復元しました'); await loadDocsAdminData() }
+		catch (err) { setError(err instanceof ApiError ? { message: err.message } : { message: '復元に失敗しました' }) }
+	}
 
   return (
     <section className="admin-card docs-admin-card">
@@ -351,6 +391,13 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
         </button>
       </form>
 
+		<form className="results-form docs-upload-form" onSubmit={handleUpload}>
+			<label>形式<select value={uploadKind} onChange={(e) => setUploadKind(e.target.value as 'note' | 'book')}><option value="note">Markdown / HTML</option><option value="book">Book ZIP</option></select></label>
+			<label>slug<input value={uploadSlug} onChange={(e) => setUploadSlug(e.target.value)} required pattern="[a-z0-9-]+" /></label>
+			<label>ファイル<input type="file" accept={uploadKind === 'book' ? '.zip' : '.md,.markdown,.html,.htm'} onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} required /></label>
+			<button type="submit" disabled={isLoading || !uploadFile}>アップロード</button>
+		</form>
+
       {error && <ErrorNotice {...error} onDismiss={() => setError(null)} />}
       {message && <p className="success-banner">{message}</p>}
 
@@ -363,9 +410,11 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
               <span>{vault.slug}</span>
               <span>branch: {vault.branch}</span>
               <span>status: {vault.status}</span>
+						<span>type: {vault.source_type}</span>
               {vault.last_synced_at && <span>synced: {new Date(vault.last_synced_at).toLocaleString()}</span>}
             </div>
             <div className="doc-vault-actions">
+						<button type="button" onClick={() => loadNotes(vault)} disabled={isLoading}>ノート管理</button>
               <button type="button" onClick={() => runVaultAction(vault.slug, 'sync')} disabled={isLoading}>
                 同期
               </button>
@@ -379,8 +428,37 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
           </div>
         ))}
       </div>
+
+		{selectedSource && (
+			<section className="doc-note-admin">
+				<h3>{selectedSource.title} のノート</h3>
+				{notes.length === 0 && <p className="empty-state">ノートはありません。</p>}
+				{notes.map((note) => <AdminNoteEditor key={note.slug} note={note} source={selectedSource} session={session} onSaved={() => loadNotes(selectedSource)} setError={setError} setMessage={setMessage} />)}
+			</section>
+		)}
+		{trashItems.length > 0 && <section className="doc-note-admin"><h3>削除済みコンテンツ</h3>{trashItems.map((item) => <div key={item} className="doc-vault-admin-row"><span>{item}</span><button type="button" onClick={() => restoreTrash(item)}>復元</button></div>)}</section>}
     </section>
   )
+}
+
+const AdminNoteEditor = ({ note, source, session, onSaved, setError, setMessage }: {
+	note: DocNote; source: DocVault; session: SessionData; onSaved: () => Promise<void>
+	setError: (error: ErrorDescriptor | null) => void; setMessage: (message: string | null) => void
+}) => {
+	const [title, setTitle] = useState(note.title); const [summary, setSummary] = useState(note.summary)
+	const [group, setGroup] = useState(note.group ?? ''); const [order, setOrder] = useState(note.order)
+	const [tags, setTags] = useState(note.tags.map((tag) => tag.name).join(', ')); const [published, setPublished] = useState(Boolean(note.published))
+	const save = async () => {
+		try { await updateAdminDocMetadata(session, source.slug, note.slug, { title, summary, group, order, published, tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean) }); setMessage('メタデータを保存しました'); await onSaved() }
+		catch (err) { setError(err instanceof ApiError ? { message: err.message } : { message: 'メタデータ保存に失敗しました' }) }
+	}
+	const trash = async () => { if (!window.confirm('このコンテンツを非公開領域へ移動しますか？')) return; try { await trashUploadedDoc(session, note.slug); setMessage('コンテンツを削除しました'); await onSaved() } catch (err) { setError(err instanceof ApiError ? { message: err.message } : { message: '削除に失敗しました' }) } }
+	return <details className="record-card doc-note-editor"><summary><span>{note.title}</span><span>{note.content_type}</span></summary><div className="doc-note-fields">
+		<label>タイトル<input value={title} onChange={(e) => setTitle(e.target.value)} /></label><label>概要<input value={summary} onChange={(e) => setSummary(e.target.value)} /></label>
+		<label>Book<input value={group} onChange={(e) => setGroup(e.target.value)} /></label><label>順序<input type="number" value={order} onChange={(e) => setOrder(Number(e.target.value))} /></label>
+		<label>タグ<input value={tags} onChange={(e) => setTags(e.target.value)} /></label><label className="doc-published"><input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />公開</label>
+		<div className="doc-vault-actions"><button type="button" onClick={save}>保存</button>{source.source_type === 'local_upload' && <button type="button" className="danger-btn" onClick={trash}>削除</button>}</div>
+	</div></details>
 }
 
 export default AdminDashboard

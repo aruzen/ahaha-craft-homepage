@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ApiError, fetchDocNotes, fetchDocVaults, type DocNote, type DocVault } from '../../api'
+import { ApiError, fetchDocToys, type DocNote, type DocVault } from '../../api'
 import './ToySpace.css'
 
 interface PublishedToy {
@@ -21,15 +21,9 @@ const ToySpace = () => {
   useEffect(() => {
     const controller = new AbortController()
     setIsLoading(true)
-    fetchDocVaults({ signal: controller.signal })
-      .then(async ({ vaults }) => {
-        const notesByVault = await Promise.all(
-          (vaults ?? []).map(async (vault) => ({
-            vault,
-            notes: (await fetchDocNotes(vault.slug, undefined, { signal: controller.signal })).notes ?? [],
-          }))
-        )
-        setToys(notesByVault.flatMap(({ vault, notes }) => notes.map((note) => ({ vault, note }))))
+    fetchDocToys({ signal: controller.signal })
+      .then(({ toys: loadedToys }) => {
+        setToys((loadedToys ?? []).map(({ source, note }) => ({ vault: source, note })))
         setError(null)
       })
       .catch((err) => {
@@ -110,7 +104,7 @@ const ToySpace = () => {
         </div>
         <div className="filter-row">
           <select value={vaultSlug} onChange={(e) => setVaultSlug(e.target.value)}>
-            <option value="all">すべてのVault</option>
+            <option value="all">すべてのソース</option>
             {vaults.map((vault) => <option key={vault.slug} value={vault.slug}>{vault.title}</option>)}
           </select>
           <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as 'latest' | 'title')}>

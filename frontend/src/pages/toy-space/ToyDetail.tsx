@@ -39,6 +39,7 @@ const ToyDetail = () => {
     () => note ? transformObsidianMarkdown(content, vaultSlug, note.metadata.links, note.metadata.embeds) : '',
     [content, note, vaultSlug]
   )
+	const html = useMemo(() => note ? injectHtmlBase(content, note.asset_base_url) : content, [content, note])
 
   return (
     <main className="toy-detail">
@@ -64,7 +65,7 @@ const ToyDetail = () => {
       {!isLoading && !error && note && (
         <section className="toy-content">
           {note.content_type === 'html' ? (
-            <iframe className="toy-html-frame" title={note.title} sandbox="allow-same-origin" srcDoc={content} />
+            <iframe className="toy-html-frame" title={note.title} sandbox="allow-same-origin" srcDoc={html} />
           ) : (
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
@@ -74,7 +75,7 @@ const ToyDetail = () => {
                   const internal = href?.startsWith('/toy-space/')
                   return <a href={href} target={internal ? undefined : '_blank'} rel={internal ? undefined : 'noreferrer'}>{children}</a>
                 },
-                img: ({ src, alt }) => <img src={resolveImage(vaultSlug, src)} alt={alt ?? ''} loading="lazy" />,
+                img: ({ src, alt }) => <img src={resolveImage(note.asset_base_url, src)} alt={alt ?? ''} loading="lazy" />,
               }}
             >
               {markdown}
@@ -100,9 +101,15 @@ const transformObsidianMarkdown = (content: string, vaultSlug: string, links: Do
   })
 }
 
-const resolveImage = (vaultSlug: string, src?: string) => {
+const resolveImage = (assetBaseUrl: string, src?: string) => {
   if (!src || /^https?:\/\//i.test(src) || src.startsWith('data:')) return src
-  return getDocAssetUrl(vaultSlug, src.replace(/^\.?\//, ''))
+	if (src.startsWith('/api/docs/assets/')) return src
+  return new URL(src.replace(/^\.\//, ''), `${window.location.origin}${assetBaseUrl}`).toString()
+}
+
+const injectHtmlBase = (content: string, assetBaseUrl: string) => {
+	const base = `<base href="${assetBaseUrl}">`
+	return /<head[\s>]/i.test(content) ? content.replace(/<head([^>]*)>/i, `<head$1>${base}`) : `${base}${content}`
 }
 
 export default ToyDetail
