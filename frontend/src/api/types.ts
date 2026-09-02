@@ -49,3 +49,62 @@ export interface FetchHueAreYouDataParams {
 export interface HueAreYouDataResponse {
   records: HueAreYouRecord[]
 }
+
+export interface DocVault {
+  slug: string
+  title: string
+  branch?: string
+  local_path?: string
+  status?: string
+  last_synced_at?: string
+}
+
+export interface DocTag {
+  slug: string
+  name: string
+}
+
+export interface DocReference {
+  raw: string
+  label?: string
+  target_slug?: string
+  asset_path?: string
+}
+
+export interface DocNoteMetadata {
+  links: DocReference[]
+  embeds: DocReference[]
+}
+
+export interface DocNote {
+  slug: string
+  title: string
+  summary: string
+  content_type: 'markdown' | 'html'
+  published?: boolean
+  order: number
+  group?: string
+  tags: DocTag[]
+  metadata: DocNoteMetadata
+  updated_at: string
+  content_url: string
+}
+
+export interface DocVaultsResponse {
+  vaults: DocVault[]
+}
+
+export interface DocNotesResponse {
+  notes: DocNote[]
+}
+
+export interface DocBranchesResponse {
+  branches: string[]
+}
+
+export interface RegisterDocVaultPayload {
+  session: SessionData
+  branch: string
+  slug?: string
+  title?: string
+}

@@ -9,6 +9,9 @@ import ToySpace from './pages/toy-space/ToySpace'
 import ToyDetail from './pages/toy-space/ToyDetail'
 import Contact from './pages/contact/Contact'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import DocsVaults from './pages/docs/DocsVaults'
+import DocsNotes from './pages/docs/DocsNotes'
+import DocsNoteView from './pages/docs/DocsNoteView'
 import { ToySpaceProvider } from './contexts/ToySpaceContext'
 import { clearSessionState, loadSessionState, saveSessionState } from './utils/sessionStorage'
 import './App.css'
@@ -108,6 +111,11 @@ function App() {
                   </NavLink>
                 </li>
                 <li>
+                  <NavLink to="/docs" className={navClassName} onClick={handleNavClick}>
+                    Docs
+                  </NavLink>
+                </li>
+                <li>
                   <NavLink to="/contact" className={navClassName} onClick={handleNavClick}>
                     コンタクト
                   </NavLink>
@@ -187,6 +195,9 @@ function App() {
             </ToySpaceProvider>
           }
         />
+        <Route path="/docs" element={<DocsVaults />} />
+        <Route path="/docs/:vaultSlug" element={<DocsNotes />} />
+        <Route path="/docs/:vaultSlug/:noteSlug" element={<DocsNoteView />} />
         <Route path="/contact" element={<Contact />} />
         <Route
           path="/admin"

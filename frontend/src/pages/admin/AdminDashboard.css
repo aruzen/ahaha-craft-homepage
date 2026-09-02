@@ -142,7 +142,8 @@
   font-size: 0.9rem;
 }
 
-.results-form input {
+.results-form input,
+.results-form select {
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.15);
@@ -150,7 +151,8 @@
   color: #f5f6fb;
 }
 
-.results-form button {
+.results-form button,
+.secondary-btn {
   align-self: end;
   padding: 10px 16px;
   border: none;
@@ -161,15 +163,35 @@
   cursor: pointer;
 }
 
-.results-form button:disabled {
+.results-form button:disabled,
+.secondary-btn:disabled,
+.danger-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.secondary-btn {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.danger-btn {
+  background: rgba(255, 107, 107, 0.18);
+  color: #ffb3aa;
+  border: 1px solid rgba(255, 107, 107, 0.45);
 }
 
 .error-banner {
   background: rgba(255, 111, 97, 0.15);
   border: 1px solid rgba(255, 111, 97, 0.5);
   color: #ffb3aa;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.success-banner {
+  background: rgba(76, 175, 120, 0.16);
+  border: 1px solid rgba(76, 175, 120, 0.5);
+  color: #b8f2ce;
   padding: 12px;
   border-radius: 12px;
 }
@@ -227,6 +249,35 @@
 .word-chip strong {
   margin-left: 8px;
   font-size: 0.85rem;
+}
+
+.doc-vault-admin-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  padding: 14px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.doc-vault-admin-row > div:first-child {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #cfd8ff;
+}
+
+.doc-vault-admin-row strong {
+  color: #f5f6fb;
+}
+
+.doc-vault-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
 }
 
 @media (max-width: 960px) {

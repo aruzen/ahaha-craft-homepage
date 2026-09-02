@@ -6,6 +6,13 @@ import type {
   SaveHueAreYouResultPayload,
   SaveHueAreYouResultResponse,
   SessionResponce,
+  DocBranchesResponse,
+  DocNote,
+  DocNotesResponse,
+  DocVault,
+  DocVaultsResponse,
+  RegisterDocVaultPayload,
+  SessionData,
 } from './types'
 
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:8080/api/'
@@ -187,6 +194,135 @@ export const fetchHueAreYouRecords = async (
       session: params.session,
       'data-range': params.dataRange,
     },
+    signal: options?.signal,
+  })
+
+export const fetchDocVaults = async (
+  options?: { signal?: AbortSignal }
+): Promise<DocVaultsResponse> =>
+  request<DocVaultsResponse>('docs/vaults', {
+    signal: options?.signal,
+  })
+
+export const fetchDocNotes = async (
+  vaultSlug: string,
+  params?: { tag?: string; group?: string },
+  options?: { signal?: AbortSignal }
+): Promise<DocNotesResponse> =>
+  request<DocNotesResponse>(`docs/vaults/${vaultSlug}/notes`, {
+    searchParams: {
+      tag: params?.tag,
+      group: params?.group,
+    },
+    signal: options?.signal,
+  })
+
+export const fetchDocNote = async (
+  vaultSlug: string,
+  noteSlug: string,
+  options?: { signal?: AbortSignal }
+): Promise<DocNote> =>
+  request<DocNote>(`docs/vaults/${vaultSlug}/notes/${noteSlug}`, {
+    signal: options?.signal,
+  })
+
+export const fetchDocContent = async (
+  vaultSlug: string,
+  noteSlug: string,
+  options?: { signal?: AbortSignal }
+): Promise<string> => {
+  const response = await fetch(buildUrl(`docs/content/${vaultSlug}/${noteSlug}`), {
+    method: 'GET',
+    headers: { Accept: 'text/markdown, text/html, text/plain' },
+    signal: options?.signal,
+  })
+
+  if (!response.ok) {
+    throw new ApiError({
+      status: response.status,
+      message: `API request failed with status ${response.status}`,
+    })
+  }
+
+  return response.text()
+}
+
+export const getDocAssetUrl = (vaultSlug: string, assetPath: string): string =>
+  buildUrl(`docs/assets/${vaultSlug}/${assetPath}`)
+
+export const fetchAdminDocBranches = async (
+  session: SessionData,
+  options?: { signal?: AbortSignal }
+): Promise<DocBranchesResponse> =>
+  request<DocBranchesResponse>('docs/admin/branches', {
+    method: 'POST',
+    body: { session },
+    signal: options?.signal,
+  })
+
+export const fetchAdminDocVaults = async (
+  session: SessionData,
+  options?: { signal?: AbortSignal }
+): Promise<DocVaultsResponse> =>
+  request<DocVaultsResponse>('docs/admin/vaults', {
+    method: 'POST',
+    body: { session },
+    signal: options?.signal,
+  })
+
+export const registerDocVault = async (
+  payload: RegisterDocVaultPayload,
+  options?: { signal?: AbortSignal }
+): Promise<DocVault> =>
+  request<DocVault>('docs/admin/vaults/register', {
+    method: 'POST',
+    body: payload,
+    signal: options?.signal,
+  })
+
+export const syncDocVault = async (
+  session: SessionData,
+  vaultSlug: string,
+  options?: { signal?: AbortSignal }
+): Promise<void> =>
+  request<void>(`docs/admin/vaults/${vaultSlug}/sync`, {
+    method: 'POST',
+    body: { session },
+    signal: options?.signal,
+  })
+
+export const rescanDocVault = async (
+  session: SessionData,
+  vaultSlug: string,
+  options?: { signal?: AbortSignal }
+): Promise<void> =>
+  request<void>(`docs/admin/vaults/${vaultSlug}/rescan`, {
+    method: 'POST',
+    body: { session },
+    signal: options?.signal,
+  })
+
+export const disableDocVault = async (
+  session: SessionData,
+  vaultSlug: string,
+  options?: { signal?: AbortSignal }
+): Promise<void> =>
+  request<void>(`docs/admin/vaults/${vaultSlug}/disable`, {
+    method: 'POST',
+    body: { session },
+    signal: options?.signal,
+  })
+
+export const overrideDocNotePublished = async (
+  session: SessionData,
+  vaultSlug: string,
+  noteSlug: string,
+  published: boolean,
+  options?: { signal?: AbortSignal }
+): Promise<void> =>
+  request<void>(`docs/admin/vaults/${vaultSlug}/notes/${noteSlug}/published`, {
+    method: 'POST',
+    body: { session, published },
     signal: options?.signal,
   })
 
