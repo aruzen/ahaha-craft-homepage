@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import LoginModal, { type LoginModalState } from './components/LoginModal'
 import type { SessionResponce, UserRole } from './api'
@@ -16,12 +16,12 @@ const navClassName = ({ isActive }: { isActive: boolean }) =>
   isActive ? 'active' : ''
 
 function App() {
-  const persistedSession = useRef(loadSessionState())
+  const [persistedSession] = useState(loadSessionState)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [modalState, setLoginModalState] = useState<LoginModalState>(null)
-  const [session, setSession] = useState<SessionResponce | null>(persistedSession.current?.session ?? null)
-  const [user, setUser] = useState<string | null>(persistedSession.current?.user ?? null)
-  const [userRole, setUserRole] = useState<UserRole | null>(persistedSession.current?.session?.role ?? null)
+  const [session, setSession] = useState<SessionResponce | null>(persistedSession?.session ?? null)
+  const [user, setUser] = useState<string | null>(persistedSession?.user ?? null)
+  const [userRole, setUserRole] = useState<UserRole | null>(persistedSession?.session?.role ?? null)
   const location = useLocation()
   const isAuthenticated = session !== null
   const isAdmin = userRole === 'admin'
@@ -186,6 +186,7 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <LoginModal
+        key={modalState ?? 'closed'}
         modalState={modalState}
         onClose={() => setLoginModalState(null)}
         onLogin={({ username, session }) => {

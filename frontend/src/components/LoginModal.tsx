@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type MouseEvent } from 'react'
+import { useState, type FormEvent, type MouseEvent } from 'react'
 import { ApiError, login, signIn, type SessionResponce } from '../api'
 import './LoginModal.css'
 
@@ -17,14 +17,6 @@ const LoginModal = ({ modalState, onClose, onLogin }: LoginModalProps) => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    setState(modalState)
-    if (modalState !== 'signup') {
-      setEmail('')
-      setConfirmPassword('')
-    }
-  }, [modalState])
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
