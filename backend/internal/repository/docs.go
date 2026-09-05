@@ -122,9 +122,9 @@ func (r *DocRepository) ReplaceScan(ctx context.Context, vaultSlug string, notes
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO doc_notes
-				(vault_slug, slug, title, summary, source_path, content_type, published, display_order, note_group, metadata, updated_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-		`, vaultSlug, note.Slug, note.Title, note.Summary, note.SourcePath, note.ContentType, note.Published, note.Order, note.Group, metadataJSON, note.UpdatedAt); err != nil {
+				(vault_slug, slug, title, summary, source_path, content_type, published, display_order, note_group, chapter_path, metadata, updated_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		`, vaultSlug, note.Slug, note.Title, note.Summary, note.SourcePath, note.ContentType, note.Published, note.Order, note.Group, note.ChapterPath, metadataJSON, note.UpdatedAt); err != nil {
 			return err
 		}
 		for _, tag := range note.Tags {
@@ -161,7 +161,7 @@ func (r *DocRepository) ListPublishedToys(ctx context.Context) ([]domain.DocToy,
 	rows, err := r.db.Query(ctx, `
 		SELECT v.slug, v.title, COALESCE(v.branch, ''), v.local_path, v.status, v.last_synced_at, v.source_type, v.default_published,
 		       n.vault_slug, n.slug, n.title, n.summary, n.source_path, n.content_type, n.published,
-		       n.display_order, n.note_group, n.metadata, n.updated_at
+		       n.display_order, n.note_group, n.chapter_path, n.metadata, n.updated_at
 		FROM doc_notes n
 		JOIN doc_vaults v ON v.slug = n.vault_slug
 		WHERE v.status = 'active' AND n.published = true
@@ -179,7 +179,7 @@ func (r *DocRepository) ListPublishedToys(ctx context.Context) ([]domain.DocToy,
 		if err := rows.Scan(
 			&toy.Vault.Slug, &toy.Vault.Title, &toy.Vault.Branch, &toy.Vault.LocalPath, &toy.Vault.Status, &lastSynced, &toy.Vault.SourceType, &toy.Vault.DefaultPublished,
 			&toy.Note.VaultSlug, &toy.Note.Slug, &toy.Note.Title, &toy.Note.Summary, &toy.Note.SourcePath,
-			&toy.Note.ContentType, &toy.Note.Published, &toy.Note.Order, &toy.Note.Group, &metadataJSON, &toy.Note.UpdatedAt,
+			&toy.Note.ContentType, &toy.Note.Published, &toy.Note.Order, &toy.Note.Group, &toy.Note.ChapterPath, &metadataJSON, &toy.Note.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -298,7 +298,7 @@ func (r *DocRepository) ListNotes(ctx context.Context, vaultSlug, tag, group str
 	args := []any{vaultSlug}
 	query := `
 		SELECT n.vault_slug, n.slug, n.title, n.summary, n.source_path, n.content_type, n.published,
-		       n.display_order, n.note_group, n.metadata, n.updated_at
+		       n.display_order, n.note_group, n.chapter_path, n.metadata, n.updated_at
 		FROM doc_notes n
 	`
 	if tag != "" {
@@ -343,7 +343,7 @@ func (r *DocRepository) ListNotes(ctx context.Context, vaultSlug, tag, group str
 func (r *DocRepository) GetNote(ctx context.Context, vaultSlug, noteSlug string, publicOnly bool) (domain.DocNote, error) {
 	query := `
 		SELECT vault_slug, slug, title, summary, source_path, content_type, published,
-		       display_order, note_group, metadata, updated_at
+		       display_order, note_group, chapter_path, metadata, updated_at
 		FROM doc_notes
 		WHERE vault_slug = $1 AND slug = $2
 	`
@@ -420,6 +420,7 @@ func scanDocNote(row docRowScanner) (domain.DocNote, error) {
 		&note.Published,
 		&note.Order,
 		&note.Group,
+		&note.ChapterPath,
 		&metadataJSON,
 		&note.UpdatedAt,
 	)

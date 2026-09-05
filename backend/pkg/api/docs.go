@@ -45,6 +45,7 @@ type DocNotePayload struct {
 	Published    bool                   `json:"published,omitempty"`
 	Order        int                    `json:"order"`
 	Group        string                 `json:"group,omitempty"`
+	ChapterPath  []string               `json:"chapter_path"`
 	Tags         []DocTagPayload        `json:"tags"`
 	Metadata     DocNoteMetadataPayload `json:"metadata"`
 	UpdatedAt    string                 `json:"updated_at"`
@@ -151,6 +152,7 @@ func NewDocNotePayload(note domain.DocNote, includeAdminFields bool) DocNotePayl
 		ContentType:  note.ContentType,
 		Order:        note.Order,
 		Group:        note.Group,
+		ChapterPath:  splitChapterPath(note.ChapterPath),
 		Tags:         tags,
 		Metadata:     newDocMetadataPayload(note.Metadata),
 		UpdatedAt:    note.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
@@ -161,6 +163,13 @@ func NewDocNotePayload(note domain.DocNote, includeAdminFields bool) DocNotePayl
 		payload.Published = note.Published
 	}
 	return payload
+}
+
+func splitChapterPath(value string) []string {
+	if value == "" {
+		return []string{}
+	}
+	return strings.Split(value, "/")
 }
 
 func docAssetBaseURL(note domain.DocNote) string {

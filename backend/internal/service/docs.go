@@ -496,7 +496,6 @@ func scanDocNoteFile(vault domain.DocVault, relPath, fullPath string, updatedAt 
 		ContentType: noteContentType(relPath),
 		Published:   vault.DefaultPublished,
 		Order:       meta.Int("order"),
-		Group:       meta.String("group"),
 		Tags:        meta.Tags(),
 		Metadata:    parseObsidianReferences(body),
 		UpdatedAt:   updatedAt.UTC(),
@@ -504,18 +503,31 @@ func scanDocNoteFile(vault domain.DocVault, relPath, fullPath string, updatedAt 
 	if meta.Has("published") {
 		note.Published = meta.Bool("published")
 	}
-	if note.Group == "" {
-		group := filepath.ToSlash(filepath.Dir(relPath))
-		if vault.SourceType == domain.DocSourceLocalUpload {
-			parts := strings.Split(group, "/")
-			if len(parts) >= 2 && parts[0] == "books" {
-				note.Group = parts[1]
-			}
-		} else if group != "." {
-			note.Group = group
-		}
-	}
+	note.Group, note.ChapterPath = deriveDocLocation(vault.SourceType, relPath, meta.String("group"))
 	return note, nil
+}
+
+func deriveDocLocation(sourceType, relPath, explicitGroup string) (string, string) {
+	dir := filepath.ToSlash(filepath.Dir(relPath))
+	if dir == "." {
+		return explicitGroup, ""
+	}
+	parts := strings.Split(dir, "/")
+	if sourceType == domain.DocSourceLocalUpload {
+		if len(parts) < 2 || parts[0] != "books" {
+			return explicitGroup, ""
+		}
+		group := parts[1]
+		if explicitGroup != "" {
+			group = explicitGroup
+		}
+		return group, strings.Join(parts[2:], "/")
+	}
+	group := parts[0]
+	if explicitGroup != "" {
+		group = explicitGroup
+	}
+	return group, strings.Join(parts[1:], "/")
 }
 
 func resolveNoteReferences(notes []domain.DocNote, assets []domain.DocAsset) {

@@ -42,6 +42,7 @@ type DocNote struct {
 	Published   bool
 	Order       int
 	Group       string
+	ChapterPath string
 	Tags        []DocTag
 	Metadata    DocNoteMetadata
 	UpdatedAt   time.Time

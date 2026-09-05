@@ -132,15 +132,35 @@ func TestScanLocalUploadsSeparatesNotesAndBooks(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	groups := map[string]string{}
+	notesByTitle := map[string]domain.DocNote{}
 	for _, note := range notes {
-		groups[note.Title] = note.Group
+		notesByTitle[note.Title] = note
 	}
-	if groups["single"] != "" {
-		t.Fatalf("single note grouped as %q", groups["single"])
+	if notesByTitle["single"].Group != "" {
+		t.Fatalf("single note grouped as %q", notesByTitle["single"].Group)
 	}
-	if groups["one"] != "guide" {
-		t.Fatalf("book chapter group = %q", groups["one"])
+	if notesByTitle["one"].Group != "guide" || notesByTitle["one"].ChapterPath != "chapters" {
+		t.Fatalf("book chapter location = %+v", notesByTitle["one"])
+	}
+}
+
+func TestDeriveDocLocationSupportsNestedBooks(t *testing.T) {
+	tests := []struct {
+		name, sourceType, path, explicitGroup, group, chapterPath string
+	}{
+		{"root note", domain.DocSourceGitVault, "note.md", "", "", ""},
+		{"git book", domain.DocSourceGitVault, "guide/part-one/start.md", "", "guide", "part-one"},
+		{"git named book", domain.DocSourceGitVault, "guide/part-one/deep/start.md", "Handbook", "Handbook", "part-one/deep"},
+		{"uploaded book", domain.DocSourceLocalUpload, "books/guide/part-one/start.md", "", "guide", "part-one"},
+		{"uploaded note", domain.DocSourceLocalUpload, "notes/start.md", "", "", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			group, chapterPath := deriveDocLocation(tt.sourceType, tt.path, tt.explicitGroup)
+			if group != tt.group || chapterPath != tt.chapterPath {
+				t.Fatalf("got (%q, %q), want (%q, %q)", group, chapterPath, tt.group, tt.chapterPath)
+			}
+		})
 	}
 }
 
