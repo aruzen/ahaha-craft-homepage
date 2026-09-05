@@ -86,6 +86,7 @@ export interface DocNote {
   published?: boolean
   order: number
   group?: string
+  chapter_path: string[]
   tags: DocTag[]
   metadata: DocNoteMetadata
   updated_at: string

@@ -1,0 +1,46 @@
+.book-chapter-tree,
+.book-chapter-tree ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.book-chapter-tree ol {
+  margin-left: 12px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 8px;
+}
+
+.book-chapter-item a {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: inherit;
+  text-decoration: none;
+}
+
+.book-chapter-item a:hover,
+.book-chapter-item a:focus-visible,
+.book-chapter-item a[aria-current='page'] {
+  color: #aeb8ff;
+  background: rgba(146, 160, 255, 0.1);
+}
+
+.book-chapter-item span {
+  color: #8f96bb;
+  font-size: 0.8rem;
+}
+
+.book-chapter-item strong {
+  overflow-wrap: anywhere;
+}
+
+.book-chapter-section > div {
+  padding: 10px 8px 6px;
+  color: #cbd0ee;
+  font-size: 0.82rem;
+  font-weight: 700;
+}

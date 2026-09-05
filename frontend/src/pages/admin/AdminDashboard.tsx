@@ -355,7 +355,7 @@ const DocsAdminPanel = ({ session }: DocsAdminPanelProps) => {
   useEffect(() => {
     void loadDocsAdminData()
 	void fetchUploadedDocTrash(session).then((response) => setTrashItems(response.items ?? [])).catch(() => undefined)
-  }, [loadDocsAdminData])
+	  }, [loadDocsAdminData, session])
 
 	const restoreTrash = async (path: string) => {
 		try { await restoreUploadedDoc(session, path); setTrashItems((items) => items.filter((item) => item !== path)); setMessage('コンテンツを復元しました'); await loadDocsAdminData() }

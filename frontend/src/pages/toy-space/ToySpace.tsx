@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { ApiError, fetchDocToys, type DocNote, type DocVault } from '../../api'
+import BookChapterList from './BookChapterList'
 import './ToySpace.css'
 
 interface PublishedToy {
@@ -17,6 +18,7 @@ const ToySpace = () => {
   const [sortOrder, setSortOrder] = useState<'latest' | 'title'>('latest')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expandedBooks, setExpandedBooks] = useState<Set<string>>(() => new Set())
 
   useEffect(() => {
     const controller = new AbortController()
@@ -148,23 +150,37 @@ const ToySpace = () => {
         {error && <p className="empty toyspace-error">{error}</p>}
         {!isLoading && !error && standaloneToys.length === 0 && books.length === 0 && <p className="empty">公開中のToyがありません。</p>}
         <div className="toy-grid">
-          {books.map((book) => (
-            <article key={`${book.vault.slug}/${book.title}`} className="toy-card toy-book">
-              <div className="toy-meta">
-                <span className="badge badge-tutorial">Book</span>
-                <span>{book.vault.title}</span>
-              </div>
-              <h3>{book.title}</h3>
-              <div className="toy-book-chapters">
-                {book.chapters.map((chapter, index) => (
-                  <Link key={chapter.slug} to={`/toy-space/${book.vault.slug}/${chapter.slug}`}>
-                    <span>{chapter.order || index + 1}</span>
-                    <strong>{chapter.title}</strong>
-                  </Link>
-                ))}
-              </div>
-            </article>
-          ))}
+          {books.map((book) => {
+            const bookKey = `${book.vault.slug}/${book.title}`
+            const expanded = expandedBooks.has(bookKey)
+            return (
+              <article key={bookKey} className="toy-card toy-book">
+                <div className="toy-meta">
+                  <span className="badge badge-tutorial">Book</span>
+                  <span>{book.vault.title}</span>
+                </div>
+                <h3>{book.title}</h3>
+                <div className="toy-book-chapters">
+                  <BookChapterList vaultSlug={book.vault.slug} chapters={book.chapters} limit={expanded ? undefined : 3} />
+                  {book.chapters.length >= 4 && (
+                    <button
+                      type="button"
+                      className="book-expand-button"
+                      aria-expanded={expanded}
+                      onClick={() => setExpandedBooks((current) => {
+                        const next = new Set(current)
+                        if (expanded) next.delete(bookKey)
+                        else next.add(bookKey)
+                        return next
+                      })}
+                    >
+                      {expanded ? '折り畳む' : `残り${book.chapters.length - 3}章を表示`}
+                    </button>
+                  )}
+                </div>
+              </article>
+            )
+          })}
           {standaloneToys.map(({ vault, note }) => (
             <article key={`${vault.slug}/${note.slug}`} className="toy-card">
               <Link to={`/toy-space/${vault.slug}/${note.slug}`} className="card-link">

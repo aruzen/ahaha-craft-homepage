@@ -37,7 +37,7 @@ const SelectionScreen: React.FC<SelectionScreenProps> = ({ onComplete, onBack })
       })
       onComplete(result)
     }
-  }, [assignments, currentWordIndex, currentWord, onComplete])
+  }, [assignments, currentWordIndex, currentWord, onComplete, wordsToUse.length])
 
   const handlePrevious = useCallback(() => {
     if (currentWordIndex > 0) {
