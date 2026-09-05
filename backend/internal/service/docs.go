@@ -569,7 +569,7 @@ func parseFrontmatter(raw string) (frontmatter, string) {
 		rest := normalized[strings.Index(normalized, "\n")+1:]
 		if end := strings.Index(rest, "\n---\n"); end >= 0 {
 			header := rest[:end]
-			body = rest[end+6:]
+			body = rest[end+len("\n---\n"):]
 			for _, line := range strings.Split(header, "\n") {
 				key, value, ok := strings.Cut(line, ":")
 				if !ok {

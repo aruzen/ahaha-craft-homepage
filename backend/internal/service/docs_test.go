@@ -185,6 +185,13 @@ func TestScanUsesVaultDefaultPublishedOnlyWhenMissing(t *testing.T) {
 	}
 }
 
+func TestParseFrontmatterAllowsEmptyBody(t *testing.T) {
+	meta, body := parseFrontmatter("---\npublished: true\n---\n")
+	if !meta.Bool("published") || body != "" {
+		t.Fatalf("unexpected frontmatter result: meta=%v body=%q", meta, body)
+	}
+}
+
 func TestExportBranchCopiesLocalGitBranch(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
