@@ -43,5 +43,11 @@ func docSlugFromPath(relPath string) string {
 }
 
 func tagSlug(value string) string {
-	return SafeDocSlug(strings.TrimPrefix(value, "#"))
+	normalized := strings.ToLower(strings.TrimSpace(strings.TrimPrefix(value, "#")))
+	base := SafeDocSlug(normalized)
+	if base == normalized {
+		return base
+	}
+	sum := sha256.Sum256([]byte(normalized))
+	return base + "-" + hex.EncodeToString(sum[:4])
 }

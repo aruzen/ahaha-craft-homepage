@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"time"
 
@@ -19,6 +18,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"gopkg.in/yaml.v3"
 )
 
 var ErrDocConflict = errors.New("docs: content exists")
@@ -303,10 +303,10 @@ func (s *DocService) updateLocalNoteMetadata(ctx context.Context, vault domain.D
 		meta["summary"] = *override.Summary
 	}
 	if override.Published != nil {
-		meta["published"] = strconv.FormatBool(*override.Published)
+		meta["published"] = *override.Published
 	}
 	if override.Order != nil {
-		meta["order"] = strconv.Itoa(*override.Order)
+		meta["order"] = *override.Order
 	}
 	if override.Group != nil {
 		meta["group"] = *override.Group
@@ -316,7 +316,7 @@ func (s *DocService) updateLocalNoteMetadata(ctx context.Context, vault domain.D
 		for i, tag := range *override.Tags {
 			names[i] = tag.Name
 		}
-		meta["tags"] = "[" + strings.Join(names, ", ") + "]"
+		meta["tags"] = names
 	}
 	updated := renderFrontmatter(meta, body)
 	return s.replaceLocalContent(ctx, vault, path, writeStagedFile(vault.LocalPath, filepath.Ext(path), []byte(updated)), "update metadata "+noteSlug)
@@ -329,16 +329,13 @@ func writeStagedFile(root, ext string, data []byte) string {
 }
 
 func renderFrontmatter(meta frontmatter, body string) string {
-	keys := make([]string, 0, len(meta))
-	for key := range meta {
-		keys = append(keys, key)
+	header, err := yaml.Marshal(map[string]any(meta))
+	if err != nil {
+		return body
 	}
-	sort.Strings(keys)
 	var b strings.Builder
 	b.WriteString("---\n")
-	for _, key := range keys {
-		fmt.Fprintf(&b, "%s: %s\n", key, meta[key])
-	}
+	b.Write(header)
 	b.WriteString("---\n")
 	b.WriteString(body)
 	return b.String()

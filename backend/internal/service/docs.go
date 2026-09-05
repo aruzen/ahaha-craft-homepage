@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -559,7 +560,7 @@ func resolveNoteReferences(notes []domain.DocNote, assets []domain.DocAsset) {
 	}
 }
 
-type frontmatter map[string]string
+type frontmatter map[string]any
 
 func parseFrontmatter(raw string) (frontmatter, string) {
 	meta := frontmatter{}
@@ -570,15 +571,10 @@ func parseFrontmatter(raw string) (frontmatter, string) {
 		if end := strings.Index(rest, "\n---\n"); end >= 0 {
 			header := rest[:end]
 			body = rest[end+len("\n---\n"):]
-			for _, line := range strings.Split(header, "\n") {
-				key, value, ok := strings.Cut(line, ":")
-				if !ok {
-					continue
-				}
-				key = strings.TrimSpace(strings.ToLower(key))
-				value = strings.Trim(strings.TrimSpace(value), `"'`)
-				if key != "" {
-					meta[key] = value
+			parsed := map[string]any{}
+			if yaml.Unmarshal([]byte(header), &parsed) == nil {
+				for key, value := range parsed {
+					meta[strings.ToLower(strings.TrimSpace(key))] = value
 				}
 			}
 		}
@@ -592,27 +588,51 @@ func stripFrontmatter(raw string) string {
 }
 
 func (m frontmatter) String(key string) string {
-	return strings.TrimSpace(m[strings.ToLower(key)])
+	value, ok := m[strings.ToLower(key)]
+	if !ok || value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
 }
 
 func (m frontmatter) Has(key string) bool { _, ok := m[strings.ToLower(key)]; return ok }
 
 func (m frontmatter) Bool(key string) bool {
+	if value, ok := m[strings.ToLower(key)].(bool); ok {
+		return value
+	}
 	value := strings.ToLower(m.String(key))
 	return value == "true" || value == "yes" || value == "1"
 }
 
 func (m frontmatter) Int(key string) int {
+	switch value := m[strings.ToLower(key)].(type) {
+	case int:
+		return value
+	case int64:
+		return int(value)
+	case float64:
+		return int(value)
+	}
 	n, _ := strconv.Atoi(m.String(key))
 	return n
 }
 
 func (m frontmatter) Tags() []domain.DocTag {
-	raw := m.String("tags")
-	raw = strings.Trim(raw, "[]")
-	fields := strings.FieldsFunc(raw, func(r rune) bool {
-		return r == ',' || r == ' ' || r == '\t'
-	})
+	var fields []string
+	switch value := m["tags"].(type) {
+	case []any:
+		for _, item := range value {
+			fields = append(fields, fmt.Sprint(item))
+		}
+	case []string:
+		fields = append(fields, value...)
+	default:
+		raw := strings.Trim(m.String("tags"), "[]")
+		fields = strings.FieldsFunc(raw, func(r rune) bool {
+			return r == ',' || r == ' ' || r == '\t'
+		})
+	}
 	tags := make([]domain.DocTag, 0, len(fields))
 	seen := map[string]bool{}
 	for _, field := range fields {

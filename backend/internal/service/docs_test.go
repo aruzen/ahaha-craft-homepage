@@ -192,6 +192,36 @@ func TestParseFrontmatterAllowsEmptyBody(t *testing.T) {
 	}
 }
 
+func TestParseFrontmatterReadsObsidianTagList(t *testing.T) {
+	meta, body := parseFrontmatter("---\ntitle: Example\ntags:\n  - 数学\n  - 論理学\npublished: true\n---\nbody")
+	tags := meta.Tags()
+	if body != "body" || len(tags) != 2 || tags[0].Name != "数学" || tags[1].Name != "論理学" {
+		t.Fatalf("unexpected frontmatter result: tags=%+v body=%q", tags, body)
+	}
+	if !meta.Bool("published") || meta.String("title") != "Example" {
+		t.Fatalf("unexpected scalar metadata: %v", meta)
+	}
+}
+
+func TestTagSlugKeepsUnicodeTagsDistinct(t *testing.T) {
+	math := tagSlug("数学")
+	logic := tagSlug("論理学")
+	if math == logic || math == "docs" || logic == "docs" {
+		t.Fatalf("unicode tag slugs collided: %q %q", math, logic)
+	}
+	if tagSlug("go") != "go" {
+		t.Fatalf("ASCII tag slug changed: %q", tagSlug("go"))
+	}
+}
+
+func TestRenderFrontmatterPreservesStructuredTags(t *testing.T) {
+	rendered := renderFrontmatter(frontmatter{"tags": []string{"go", "docs"}, "order": 2}, "body")
+	meta, body := parseFrontmatter(rendered)
+	if body != "body" || meta.Int("order") != 2 || len(meta.Tags()) != 2 {
+		t.Fatalf("frontmatter round trip failed: %q", rendered)
+	}
+}
+
 func TestExportBranchCopiesLocalGitBranch(t *testing.T) {
 	ctx := context.Background()
 	repo := t.TempDir()
