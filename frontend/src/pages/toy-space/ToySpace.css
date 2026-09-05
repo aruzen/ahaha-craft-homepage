@@ -1,5 +1,5 @@
 .toyspace {
-  padding: 60px 8vw;
+  padding: 20px 8vw 60px;
   background: radial-gradient(circle at top, rgba(112, 131, 255, 0.12), transparent 50%), #05060e;
   color: #f7f8ff;
   min-height: calc(100vh - var(--header-height, 80px));
